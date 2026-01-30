@@ -1,0 +1,250 @@
+🧴 Custom Bottle E-commerce — Complete Product Flow
+Main User Flow
+Landing Page
+→ User Login / Signup
+→ Design Engine
+→ Add to Cart
+→ Checkout & Payment
+→ Order Created
+→ Admin Dashboard
+
+1. Landing Page
+
+👉 Start Designing
+ a button that redirect login 
+User clicks:
+
+👉 Login / Signup required to continue
+
+2. User Login System
+
+Options:
+
+Email + password
+register user if dont have the id password
+
+After login:
+show this section
+. Design Engine (Core Feature)
+
+This is your product 
+
+Editor Features
+Label Editor Tools
+✅ change cap colour 
+✅ Add text
+✅ Font selection
+✅ Color picker
+✅ Upload image
+✅ Crop image
+✅ Resize image
+✅ Drag & rotate
+✅ Safe print zone overlay
+✅ Background color / gradient
+✅ Previous used images gallery
+✅ AI image generator option
+✅ Undo / redo
+✅ Save draft
+in this we are using the 3d model to show the morkup design  /public/bottle3.glb preview
+
+Design Engine Flow
+Open editor
+→ Create or load design
+→ Edit label
+→ Preview on bottle mockup
+→ Save design
+→ Continue to cart
+
+Saved design data
+design_id
+label_image (PNG)
+print_file (PDF) high quelity 150 dps for batter print queality make this as a worning  detect image quelity
+3D bottle snapshot
+design_json
+user_id
+
+4. Add to Cart Flow
+
+After design is saved:
+
+User selects:
+
+Quantity (min 100)
+
+Cart contains:
+
+Product ID
+Design ID
+Label Preview
+Bottle Snapshot
+Quantity
+Price
+
+
+User confirms:
+
+Proceed to Checkout
+
+5. Checkout & Payment Flow
+
+User fills required fields:
+
+Company Name
+Full Name
+Email
+Phone Number
+Shipping Address 1
+shipped Address 2 optional 
+ZIP (required)
+Country (required)
+City (required)
+
+
+Then payment:
+
+globle payment  dont implemnt right now 
+
+Payment Success Logic
+
+When payment is confirmed:
+
+System automatically creates order:
+
+order_id
+user_id
+design_id
+label_image
+bottle_snapshot
+label image in pdf formate 
+payment_status = success
+order_status = pending_production
+total_amount
+
+
+Customer receives: for this use the nodemon 
+
+ Email confirmation
+ Order receipt
+ Design preview attached
+
+6. Admin Dashboard Flow
+
+Admin sees all production data.
+
+Admin Main Panels
+Dashboard Overview
+
+Total users
+
+Total orders
+
+Total revenue
+
+Pending production orders
+
+Support tickets
+
+Orders Panel
+
+Each order shows:
+
+Order ID
+Customer Name
+Company Name
+Email / Phone
+Quantity
+Payment Status
+Order Status
+Label Image Preview
+Bottle Snapshot
+Download Print File
+
+
+Admin actions:
+
+Mark as printing
+
+Mark as packed
+
+Mark as shipped
+
+Cancel order
+
+Contact customer
+
+Users Panel
+
+User list
+
+Order history per user
+
+Saved designs
+
+Support Panel
+
+Customer messages
+
+Order issues
+
+Refund requests
+
+7. System Data Flow Diagram
+User → Designer → Cart → Payment Gateway
+→ Order Service
+→ Database
+→ Admin Dashboard
+→ Production Team
+
+8. Required Database Structure
+Users
+user_id
+name
+email
+phone
+company_name
+
+Designs
+design_id
+user_id
+design_json
+label_image
+print_pdf
+bottle_snapshot
+created_at
+
+Orders
+order_id
+user_id
+design_id
+quantity
+total_price
+payment_status
+order_status
+created_at
+
+9. Production Automation (Important)
+
+When order is paid:
+
+System auto-generates:
+
+✅ Print-ready label PDF
+✅ High-resolution PNG
+✅ Production export folder
+✅ Admin notification
+
+No manual designer needed.
+
+Final System Flow (Simple View)
+Landing Page
+→ Login
+→ Design Label
+→ Save Design
+→ Add to Cart
+→ Payment
+→ Order Created
+→ Admin Dashboard
+→ Production
+
+
+ui ux instrution  
