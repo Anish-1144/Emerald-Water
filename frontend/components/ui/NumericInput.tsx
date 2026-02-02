@@ -22,7 +22,10 @@ export default function NumericInput({
   return (
     <div className={`flex flex-col ${className}`}>
       {label && (
-        <label className="block text-sm font-medium mb-1 text-gray-300">
+        <label 
+          className="block text-sm font-medium mb-1 transition-colors"
+          style={{ color: 'var(--text-secondary)' }}
+        >
           {label}
         </label>
       )}
@@ -39,11 +42,18 @@ export default function NumericInput({
         min={min}
         max={max}
         step={step}
-        className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F]"
+        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-colors"
+        style={{ 
+          backgroundColor: 'var(--input-bg)', 
+          borderColor: 'var(--input-border)',
+          color: 'var(--text-primary)'
+        }}
       />
     </div>
   );
 }
+
+
 
 
 

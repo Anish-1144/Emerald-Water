@@ -1,14 +1,19 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 async function request(endpoint: string, options: RequestInit = {}) {
+  // Check for order token first, then regular token
+  const orderToken = typeof window !== 'undefined' ? localStorage.getItem('orderToken') : null;
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   
-  const headers: HeadersInit = {
+  const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...(options.headers as Record<string, string> || {}),
   };
 
-  if (token) {
+  // Use orderToken for order endpoints, regular token for others
+  if (orderToken && endpoint.includes('/orders')) {
+    headers['Authorization'] = `Bearer ${orderToken}`;
+  } else if (token) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
@@ -25,15 +30,12 @@ async function request(endpoint: string, options: RequestInit = {}) {
   return response.json();
 }
 
-// Auth API
+// Auth API - OTP based authentication for order access
 export const authAPI = {
-  register: (data: { name: string; email: string; password: string; phone?: string; company_name?: string }) =>
-    request('/users/register', { method: 'POST', body: JSON.stringify(data) }),
-  login: (data: { email: string; password: string }) =>
-    request('/users/login', { method: 'POST', body: JSON.stringify(data) }),
-  getCurrentUser: () => request('/users/me'),
-  updateProfile: (data: { name?: string; email?: string; phone?: string; company_name?: string; currentPassword?: string; newPassword?: string }) =>
-    request('/users/profile', { method: 'PUT', body: JSON.stringify(data) }),
+  sendOTP: (email: string) =>
+    request('/auth/send-otp', { method: 'POST', body: JSON.stringify({ email }) }),
+  verifyOTP: (email: string, otp: string) =>
+    request('/auth/verify-otp', { method: 'POST', body: JSON.stringify({ email, otp }) }),
 };
 
 // Design API
@@ -51,6 +53,10 @@ export const orderAPI = {
   createOrder: (data: any) =>
     request('/orders', { method: 'POST', body: JSON.stringify(data) }),
   getOrders: () => request('/orders'),
+  getOrdersByContact: () => {
+    // No parameters needed - email comes from JWT token
+    return request('/orders/search');
+  },
   getOrder: (id: string) => request(`/orders/${id}`),
 };
 

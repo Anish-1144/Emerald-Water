@@ -334,7 +334,7 @@ export default function LabelEditor({ onExport }: LabelEditorProps) {
     if (isRotating && selectedElement) {
       const newRotation = calculateRotation(selectedElement, canvasX, canvasY);
       updateElement(selectedElement.id, { rotation: newRotation });
-    } else if (isResizing && selectedElement && activeHandle) {
+    } else if (isResizing && selectedElement && activeHandle && activeHandle !== 'rotate') {
       const deltaX = canvasX - dragStart.x;
       const deltaY = canvasY - dragStart.y;
       const updates = calculateResize(selectedElement, activeHandle, deltaX, deltaY);

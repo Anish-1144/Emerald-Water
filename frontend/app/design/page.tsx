@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuthStore, useDesignStore as useDesignDataStore, useCartStore } from '@/lib/store';
+import { useDesignStore as useDesignDataStore, useCartStore } from '@/lib/store';
 import { useDesignStore } from '@/store/useDesignStore';
 import { useLabelEditorStore } from '@/store/useLabelEditorStore';
 import { designAPI } from '@/lib/api';
@@ -15,12 +15,51 @@ import ImageCropModal from '@/components/ui/ImageCropModal';
 
 export default function DesignPage() {
   const router = useRouter();
-  const { user, token } = useAuthStore();
   const { currentDesign, setCurrentDesign } = useDesignDataStore();
   const { capColor, setCapColor, labelTexture, setLabelTexture } = useDesignStore();
   const { addToCart, items: cartItems } = useCartStore();
   const { exportCanvas: exportLabelCanvas, elements: labelEditorElements } = useLabelEditorStore();
   const [activeTab, setActiveTab] = useState<string | null>('label-design');
+  // Track the current design mode to ensure proper state management
+  const [designMode, setDesignMode] = useState<'uploaded' | 'designed' | null>(null);
+
+  // Check for pending tab from navigation (e.g., from orders page)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const pendingTab = sessionStorage.getItem('pendingTab');
+      if (pendingTab) {
+        setActiveTab(pendingTab);
+        sessionStorage.removeItem('pendingTab');
+      }
+    }
+  }, []);
+
+  // Handle tab changes - reset state when switching tabs
+  useEffect(() => {
+    if (activeTab === 'upload') {
+      // When switching to Upload tab: clear label editor elements and reset bottle to default
+      const { elements } = useLabelEditorStore.getState();
+      if (elements.length > 0) {
+        useLabelEditorStore.setState({ 
+          elements: [], 
+          history: [], 
+          historyIndex: -1,
+          backgroundColor: '#ffffff'
+        });
+      }
+      // Reset design mode
+      setDesignMode(null);
+      // Clear label texture to show default bottle
+      setLabelTexture(null);
+    } else if (activeTab === 'label-design') {
+      // When switching to Label Design tab: clear uploaded image
+      if (labelData.image) {
+        setLabelData({ ...labelData, image: null });
+      }
+      // Reset design mode
+      setDesignMode(null);
+    }
+  }, [activeTab]);
   const [labelData, setLabelData] = useState({
     text: '',
     fontSize: 24,
@@ -42,24 +81,15 @@ export default function DesignPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  useEffect(() => {
-    if (!user || !token) {
-      router.push('/login');
-    }
-  }, [user, token, router]);
+  // Auth is no longer required for design page
 
   const generateLabelImage = async (): Promise<string> => {
-    // Priority 1: If user uploaded a direct image (from Upload tab) and label editor is empty, use the uploaded image
-    const hasLabelEditorElements = labelEditorElements && labelEditorElements.length > 0;
+    // Get current state from store (not from closure)
+    const currentElements = useLabelEditorStore.getState().elements;
+    const hasLabelEditorElements = currentElements && currentElements.length > 0;
     
-    if (labelData.image && !hasLabelEditorElements) {
-      // User uploaded a pre-built label image - use it directly
-      setLabelTexture(labelData.image);
-      return labelData.image;
-    }
-
-    // Priority 2: If label editor has elements, use the editor export
-    if (hasLabelEditorElements) {
+    // Priority 1: If design mode is 'designed' OR label editor has elements, use the editor export
+    if (designMode === 'designed' || (hasLabelEditorElements && designMode !== 'uploaded')) {
       try {
         const exportedImage = await exportLabelCanvas();
         if (exportedImage) {
@@ -68,6 +98,15 @@ export default function DesignPage() {
         }
       } catch (error) {
         console.warn('Label editor export failed, using fallback', error);
+      }
+    }
+
+    // Priority 2: If design mode is 'uploaded' OR user uploaded a direct image, use the uploaded image
+    if (designMode === 'uploaded' || (labelData.image && !hasLabelEditorElements)) {
+      // User uploaded a pre-built label image - use it directly
+      if (labelData.image) {
+        setLabelTexture(labelData.image);
+        return labelData.image;
       }
     }
 
@@ -89,8 +128,8 @@ export default function DesignPage() {
       return '';
     }
 
-    canvas.width = 2048; // Match label editor canvas size
-    canvas.height = 1024;
+    canvas.width = 2081; // Match label editor canvas size
+    canvas.height = 544;
 
     // Draw background
     if (labelData.backgroundType === 'gradient') {
@@ -156,7 +195,37 @@ export default function DesignPage() {
   };
 
   const handleCropSave = (croppedImage: string) => {
-    setLabelData({ ...labelData, image: croppedImage });
+    // Clear label editor elements when user uploads an image
+    // This ensures uploaded image takes priority over any existing label design
+    const { elements } = useLabelEditorStore.getState();
+    if (elements.length > 0) {
+      // Clear all elements and reset background
+      useLabelEditorStore.setState({ 
+        elements: [], 
+        history: [], 
+        historyIndex: -1,
+        backgroundColor: '#ffffff'
+      });
+    }
+    
+    // Set design mode to uploaded
+    setDesignMode('uploaded');
+    
+    // Clear any previous design data and set uploaded image
+    setLabelData({ 
+      text: '',
+      fontSize: 24,
+      fontFamily: 'Arial',
+      textColor: '#000000',
+      backgroundColor: '#ffffff',
+      backgroundType: 'solid' as 'solid' | 'gradient',
+      gradientStart: '#ffffff',
+      gradientEnd: '#ffffff',
+      image: croppedImage,
+      imagePosition: { x: 0, y: 0 },
+      imageSize: { width: 200, height: 200 },
+      imageRotation: 0,
+    });
     setLabelTexture(croppedImage);
     setShowCropModal(false);
     setImageToCrop(null);
@@ -170,11 +239,21 @@ export default function DesignPage() {
       const bottleSnapshot = await captureBottleSnapshot();
       const printPdf = labelImage;
 
-      // Determine design source type
-      const hasLabelEditorElements = labelEditorElements && labelEditorElements.length > 0;
-      const hasUploadedImage = labelData.image && !hasLabelEditorElements;
-      const hasDesignedLabel = hasLabelEditorElements;
-      const designSource = hasUploadedImage ? 'uploaded' : hasDesignedLabel ? 'designed' : 'legacy';
+      // Determine design source type based on designMode or current state
+      const currentElements = useLabelEditorStore.getState().elements;
+      const hasLabelEditorElements = currentElements && currentElements.length > 0;
+      
+      // Use designMode if set, otherwise infer from current state
+      let hasDesignedLabel = false;
+      let hasUploadedImage = false;
+      
+      if (designMode === 'designed' || (hasLabelEditorElements && designMode !== 'uploaded')) {
+        hasDesignedLabel = true;
+      } else if (designMode === 'uploaded' || (labelData.image && !hasLabelEditorElements)) {
+        hasUploadedImage = true;
+      }
+      
+      const designSource = hasDesignedLabel ? 'designed' : hasUploadedImage ? 'uploaded' : 'legacy';
 
       const designData = {
         design_json: {
@@ -198,8 +277,6 @@ export default function DesignPage() {
       if (labelImage) {
         setLabelTexture(labelImage);
       }
-      
-      alert('Design saved successfully!');
     } catch (error: any) {
       alert('Error saving design: ' + error.message);
     } finally {
@@ -212,6 +289,45 @@ export default function DesignPage() {
     if (quantity >= 1000) return quantity * 1;
     if (quantity >= 500) return quantity * 1.5;
     return quantity * 2;
+  };
+
+  // Reset design state to default (fresh/newly)
+  const resetDesignState = () => {
+    // Clear label texture (reset 3D model to default)
+    setLabelTexture(null);
+    
+    // Clear current design
+    setCurrentDesign(null);
+    
+    // Clear label editor elements
+    useLabelEditorStore.setState({ 
+      elements: [], 
+      history: [], 
+      historyIndex: -1,
+      backgroundColor: '#ffffff'
+    });
+    
+    // Reset label data
+    setLabelData({
+      text: '',
+      fontSize: 24,
+      fontFamily: 'Arial',
+      textColor: '#000000',
+      backgroundColor: '#ffffff',
+      backgroundType: 'solid' as 'solid' | 'gradient',
+      gradientStart: '#ffffff',
+      gradientEnd: '#ffffff',
+      image: null,
+      imagePosition: { x: 0, y: 0 },
+      imageSize: { width: 200, height: 200 },
+      imageRotation: 0,
+    });
+    
+    // Reset design mode
+    setDesignMode(null);
+    
+    // Reset cap color to default
+    setCapColor('#ffffff');
   };
 
   const handleAddToCart = async () => {
@@ -227,13 +343,16 @@ export default function DesignPage() {
       }
       
       if (designToAdd && designToAdd._id) {
-        // Add to cart with the design
+        // Add to cart with the design (will be saved to localStorage automatically)
         addToCart({
           design_id: designToAdd._id,
           design: designToAdd,
           quantity: 100,
           price: calculatePrice(100),
         });
+        
+        // Reset 3D model to default (fresh/newly)
+        resetDesignState();
         
         // Navigate to cart page
         router.push('/cart');
@@ -246,10 +365,8 @@ export default function DesignPage() {
     }
   };
 
-  if (!user) return null;
-
   return (
-    <div className="flex flex-col h-screen bg-[#1E1E1E]">
+    <div className="flex flex-col h-screen transition-colors" style={{ backgroundColor: 'var(--background)' }}>
       <Header />
       
       <div className="flex flex-1 overflow-hidden">
@@ -273,11 +390,12 @@ export default function DesignPage() {
             currentDesign={currentDesign}
             onAddToCart={handleAddToCart}
             cartItems={cartItems}
+            onDesignModeChange={setDesignMode}
           />
         )}
         
-        {/* Show 3D model only when Cart, Ticket, or Edit Profile is NOT active */}
-        {activeTab !== 'cart' && activeTab !== 'ticket' && activeTab !== 'edit-profile' && (
+        {/* Show 3D model only when Cart or Ticket is NOT active */}
+        {activeTab !== 'cart' && activeTab !== 'ticket' && (
           <main className={`flex-1 overflow-hidden ${activeTab ? 'w-[65%]' : 'w-full'}`}>
             <div className="h-full bg-[#1E1E1E]">
               <Bottle3D />
@@ -286,7 +404,7 @@ export default function DesignPage() {
         )}
       </div>
 
-      <Footer onAddToCart={handleAddToCart} />
+      {activeTab !== 'cart' && <Footer onAddToCart={handleAddToCart} />}
       
       <canvas ref={canvasRef} className="hidden" />
 

@@ -10,6 +10,9 @@ console.log('PORT:', PORT);
 console.log('NODE_ENV:', process.env.NODE_ENV || 'development');
 console.log('MONGODB_URL_DEVELOPMENT:', process.env.MONGODB_URL_DEVELOPMENT ? '✅ Set' : '❌ Not set');
 console.log('JWT_SECRET:', process.env.JWT_SECRET ? '✅ Set' : '❌ Not set');
+console.log('SMTP_HOST:', process.env.SMTP_HOST || '❌ Not set');
+console.log('SMTP_USER:', process.env.SMTP_USER ? '✅ Set' : '❌ Not set');
+console.log('SMTP_PASS:', process.env.SMTP_PASS ? '✅ Set' : '❌ Not set');
 console.log('===========================\n');
 
 // Connect to database first, then start server

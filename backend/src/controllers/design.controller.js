@@ -7,8 +7,8 @@ const saveDesign = async (req, res) => {
 
     if (design_id) {
       // Update existing design
-      const design = await Design.findOneAndUpdate(
-        { _id: design_id, user_id: req.user._id },
+      const design = await Design.findByIdAndUpdate(
+        design_id,
         {
           design_json,
           label_image,
@@ -27,7 +27,6 @@ const saveDesign = async (req, res) => {
     } else {
       // Create new design
       const design = new Design({
-        user_id: req.user._id,
         design_json,
         label_image,
         print_pdf,
@@ -43,10 +42,10 @@ const saveDesign = async (req, res) => {
   }
 };
 
-// Get user's designs
-const getUserDesigns = async (req, res) => {
+// Get all designs
+const getAllDesigns = async (req, res) => {
   try {
-    const designs = await Design.find({ user_id: req.user._id })
+    const designs = await Design.find()
       .sort({ createdAt: -1 });
     res.json(designs);
   } catch (error) {
@@ -57,10 +56,7 @@ const getUserDesigns = async (req, res) => {
 // Get single design
 const getDesign = async (req, res) => {
   try {
-    const design = await Design.findOne({
-      _id: req.params.id,
-      user_id: req.user._id
-    });
+    const design = await Design.findById(req.params.id);
 
     if (!design) {
       return res.status(404).json({ message: 'Design not found' });
@@ -75,10 +71,7 @@ const getDesign = async (req, res) => {
 // Delete design
 const deleteDesign = async (req, res) => {
   try {
-    const design = await Design.findOneAndDelete({
-      _id: req.params.id,
-      user_id: req.user._id
-    });
+    const design = await Design.findByIdAndDelete(req.params.id);
 
     if (!design) {
       return res.status(404).json({ message: 'Design not found' });
@@ -90,5 +83,5 @@ const deleteDesign = async (req, res) => {
   }
 };
 
-module.exports = { saveDesign, getUserDesigns, getDesign, deleteDesign };
+module.exports = { saveDesign, getAllDesigns, getDesign, deleteDesign };
 

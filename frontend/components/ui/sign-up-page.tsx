@@ -19,6 +19,10 @@ interface SignUpPageProps {
   testimonials?: Testimonial[];
   onSignUp?: (event: React.FormEvent<HTMLFormElement>) => void;
   onSignIn?: () => void;
+  defaultName?: string;
+  defaultEmail?: string;
+  defaultPhone?: string;
+  defaultCompany?: string;
 }
 
 // --- SUB-COMPONENTS ---
@@ -56,6 +60,10 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
   testimonials = [],
   onSignUp,
   onSignIn,
+  defaultName = '',
+  defaultEmail = '',
+  defaultPhone = '',
+  defaultCompany = '',
 }) => {
   const [showPassword, setShowPassword] = useState(false);
 
@@ -72,14 +80,14 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
               <div>
                 <label className="text-sm font-medium text-gray-300 mb-2 block">Full Name</label>
                 <GlassInputWrapper icon={<User className="w-5 h-5" />}>
-                  <input name="name" type="text" placeholder="Enter your full name" className="w-full bg-transparent text-white text-sm p-4 rounded-2xl focus:outline-none placeholder:text-gray-400" required />
+                  <input name="name" type="text" placeholder="Enter your full name" defaultValue={defaultName} className="w-full bg-transparent text-white text-sm p-4 rounded-2xl focus:outline-none placeholder:text-gray-400" required />
                 </GlassInputWrapper>
               </div>
 
               <div>
                 <label className="text-sm font-medium text-gray-300 mb-2 block">Email Address</label>
                 <GlassInputWrapper>
-                  <input name="email" type="email" placeholder="Enter your email address" className="w-full bg-transparent text-white text-sm p-4 rounded-2xl focus:outline-none placeholder:text-gray-400" required />
+                  <input name="email" type="email" placeholder="Enter your email address" defaultValue={defaultEmail} className="w-full bg-transparent text-white text-sm p-4 rounded-2xl focus:outline-none placeholder:text-gray-400" required />
                 </GlassInputWrapper>
               </div>
 
@@ -99,14 +107,14 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
                 <div>
                   <label className="text-sm font-medium text-gray-300 mb-2 block">Phone (Optional)</label>
                   <GlassInputWrapper>
-                    <input name="phone" type="tel" placeholder="Enter your phone number" className="w-full bg-transparent text-white text-sm p-4 rounded-2xl focus:outline-none placeholder:text-gray-400" />
+                    <input name="phone" type="tel" placeholder="Enter your phone number" defaultValue={defaultPhone} className="w-full bg-transparent text-white text-sm p-4 rounded-2xl focus:outline-none placeholder:text-gray-400" />
                   </GlassInputWrapper>
                 </div>
 
                 <div>
                   <label className="text-sm font-medium text-gray-300 mb-2 block">Company Name (Optional)</label>
                   <GlassInputWrapper>
-                    <input name="company_name" type="text" placeholder="Enter your company name" className="w-full bg-transparent text-white text-sm p-4 rounded-2xl focus:outline-none placeholder:text-gray-400" />
+                    <input name="company_name" type="text" placeholder="Enter your company name" defaultValue={defaultCompany} className="w-full bg-transparent text-white text-sm p-4 rounded-2xl focus:outline-none placeholder:text-gray-400" />
                   </GlassInputWrapper>
                 </div>
               </div>
@@ -116,9 +124,11 @@ export const SignUpPage: React.FC<SignUpPageProps> = ({
               </button>
             </form>
 
-            <p className="text-center text-sm text-gray-300">
-              Already have an account? <a href="#" onClick={(e) => { e.preventDefault(); onSignIn?.(); }} className="text-violet-400 hover:underline transition-colors">Sign In</a>
-            </p>
+            {onSignIn && (
+              <p className="text-center text-sm text-gray-300">
+                Already have an account? <a href="#" onClick={(e) => { e.preventDefault(); onSignIn?.(); }} className="text-violet-400 hover:underline transition-colors">Sign In</a>
+              </p>
+            )}
           </div>
         </div>
       </section>

@@ -248,3 +248,8 @@ Landing Page
 
 
 ui ux instrution  
+
+
+
+
+in this order we have to implement the flow  that user enter there email anf get otp to get  the token like jwt that that 5 day validity  act as auth to see the user oder that make intrigity and confidenceality for otp we use the 

@@ -7,6 +7,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import * as THREE from 'three';
 import { Mesh, Color } from 'three';
 import { useDesignStore } from '@/store/useDesignStore';
+import { useThemeStore } from '@/lib/store';
 
 interface BottleModelProps {
   capColor: string;
@@ -46,6 +47,10 @@ function BottleModelWithCenter({ capColor, labelTexture, onCenterChange }: Bottl
   }, [bottleCenter, onCenterChange]);
 
   useEffect(() => {
+    // Rotate the entire bottle model to show label facing camera
+    // Try 180 degrees around Y axis first - adjust if label is on different side
+    gltf.scene.rotation.y = Math.PI; // 180 degrees
+    
     // Traverse the model to find meshes
     gltf.scene.traverse((child) => {
       if (child instanceof Mesh) {
@@ -57,9 +62,14 @@ function BottleModelWithCenter({ capColor, labelTexture, onCenterChange }: Bottl
           capTopRef.current = child;
         } else if (meshName === 'label') {
           labelRef.current = child;
+          console.log('Label mesh found:', child.name, 'Position:', child.position, 'Rotation:', child.rotation);
           // Store original material to preserve properties
           if (child.material) {
             labelOriginalMaterialRef.current = child.material;
+          }
+          // Make label double-sided so it's visible from both sides
+          if (child.material instanceof THREE.MeshStandardMaterial) {
+            child.material.side = THREE.DoubleSide;
           }
         }
         // Bottle body keeps original material/texture - no need to store ref
@@ -107,12 +117,12 @@ function BottleModelWithCenter({ capColor, labelTexture, onCenterChange }: Bottl
         // Adjust padding for slightly smaller view (1.2 for balanced size)
         const cameraDistance = baseDistance * 1.2;
         
-        // Position camera at a good viewing angle
-        // More frontal view (less side angle) to better show full height
+        // Position camera to face the label side (straight front view)
+        // Centered position to ensure label is visible
         const targetPosition = new THREE.Vector3(
-          center.x + cameraDistance * 0.2,
+          center.x,
           center.y, // Keep camera at same height as center for symmetric vertical fit
-          center.z + cameraDistance * 0.9
+          center.z + cameraDistance
         );
         
         camera.position.copy(targetPosition);
@@ -215,10 +225,26 @@ function BottleModelWithCenter({ capColor, labelTexture, onCenterChange }: Bottl
               newMaterial.map = texture;
               newMaterial.roughness = 0.3; // Lower roughness for more reflective/crisp look
               newMaterial.metalness = 0.1; // Slight metalness for better definition
+              newMaterial.side = THREE.DoubleSide; // Make label visible from both sides
+              // Ensure material is visible and not transparent
+              newMaterial.transparent = false;
+              newMaterial.opacity = 1.0;
               newMaterial.needsUpdate = true;
+              console.log('Label texture applied to material:', {
+                hasTexture: !!newMaterial.map,
+                side: newMaterial.side,
+                labelPosition: labelRef.current?.position,
+                labelRotation: labelRef.current?.rotation
+              });
             }
             
             labelRef.current.material = newMaterial;
+            
+            // Force update the label mesh
+            if (labelRef.current) {
+              labelRef.current.updateMatrix();
+              labelRef.current.updateMatrixWorld(true);
+            }
             
             // Ensure geometry UVs are updated
             if (geometry && geometry.attributes.uv) {
@@ -396,6 +422,7 @@ export interface BottleViewerRef {
 const BottleViewer = forwardRef<BottleViewerRef>((props, ref) => {
   const capColor = useDesignStore((state) => state.capColor);
   const labelTexture = useDesignStore((state) => state.labelTexture);
+  const { theme } = useThemeStore();
   const [downloadView, setDownloadView] = useState<string | null>(null);
   const [bottleCenter, setBottleCenter] = useState<THREE.Vector3 | null>(null);
 
@@ -405,8 +432,14 @@ const BottleViewer = forwardRef<BottleViewerRef>((props, ref) => {
     },
   }));
 
+  // Get background color based on theme
+  const backgroundColor = theme === 'light' ? '#ffffff' : '#000000';
+
   return (
-    <div className="w-full h-full bg-black">
+    <div 
+      className="w-full h-full transition-colors"
+      style={{ backgroundColor }}
+    >
       <Canvas
         gl={{ 
           preserveDrawingBuffer: true,
@@ -416,7 +449,7 @@ const BottleViewer = forwardRef<BottleViewerRef>((props, ref) => {
         }}
         camera={{ position: [0, 1, 7], fov: 85 }}
       >
-        <color attach="background" args={['#000000']} />
+        <color attach="background" args={[backgroundColor]} />
         <Suspense fallback={null}>
           <PerspectiveCamera makeDefault position={[0, 1, 7]} fov={85} />
           <BottleModelWithCenter 

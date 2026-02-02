@@ -15,8 +15,9 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Admin page still requires authentication and admin role
     if (!user || !token) {
-      router.push('/login');
+      router.push('/');
       return;
     }
     if (user.role !== 'admin') {

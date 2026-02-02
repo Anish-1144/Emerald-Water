@@ -1,6 +1,5 @@
 const Order = require('../models/Order.model');
 const Design = require('../models/Design.model');
-const User = require('../models/User.model');
 const crypto = require('crypto');
 
 // Create order
@@ -10,7 +9,7 @@ const createOrder = async (req, res) => {
 
     // Get design
     const design = await Design.findById(design_id);
-    if (!design || design.user_id.toString() !== req.user._id.toString()) {
+    if (!design) {
       return res.status(404).json({ message: 'Design not found' });
     }
 
@@ -20,7 +19,6 @@ const createOrder = async (req, res) => {
     // Create order
     const order = new Order({
       order_id,
-      user_id: req.user._id,
       design_id,
       quantity,
       total_price,
@@ -33,22 +31,43 @@ const createOrder = async (req, res) => {
     });
 
     await order.save();
-
-    // Populate user info for email
-    const user = await User.findById(req.user._id);
-
     res.status(201).json(order);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-// Get user's orders
-const getUserOrders = async (req, res) => {
+// Get all orders
+const getAllOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ user_id: req.user._id })
+    const orders = await Order.find()
       .populate('design_id')
       .sort({ createdAt: -1 });
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get orders by authenticated email
+const getOrdersByContact = async (req, res) => {
+  try {
+    // Get email from authenticated user (set by orderAuth middleware)
+    const email = req.userEmail;
+    
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+
+    // Find orders by email
+    const query = {
+      'shipping_address.email': email.toLowerCase().trim()
+    };
+
+    const orders = await Order.find(query)
+      .populate('design_id')
+      .sort({ createdAt: -1 });
+    
     res.json(orders);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -59,16 +78,10 @@ const getUserOrders = async (req, res) => {
 const getOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
-      .populate('design_id')
-      .populate('user_id', 'name email phone company_name');
+      .populate('design_id');
 
     if (!order) {
       return res.status(404).json({ message: 'Order not found' });
-    }
-
-    // Check if user owns the order or is admin
-    if (order.user_id._id.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-      return res.status(403).json({ message: 'Access denied' });
     }
 
     res.json(order);
@@ -77,5 +90,5 @@ const getOrder = async (req, res) => {
   }
 };
 
-module.exports = { createOrder, getUserOrders, getOrder };
+module.exports = { createOrder, getAllOrders, getOrder, getOrdersByContact };
 

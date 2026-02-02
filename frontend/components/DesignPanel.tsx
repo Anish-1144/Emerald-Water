@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, ChevronRight, ChevronLeft } from 'lucide-react';
 import FigmaColorPicker from '@/components/ui/FigmaColorPicker';
 import { useAuthStore, useCartStore } from '@/lib/store';
-import { authAPI, orderAPI } from '@/lib/api';
+import { orderAPI } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import LabelDesignPanel from '@/components/LabelDesignPanel';
 
@@ -25,6 +25,7 @@ interface DesignPanelProps {
   currentDesign: any;
   onAddToCart: () => void;
   cartItems?: any[];
+  onDesignModeChange?: (mode: 'uploaded' | 'designed' | null) => void;
 }
 
 export default function DesignPanel({
@@ -44,29 +45,17 @@ export default function DesignPanel({
   currentDesign,
   onAddToCart,
   cartItems = [],
+  onDesignModeChange,
 }: DesignPanelProps) {
   if (!activeTab) return null;
 
-  // Full width for Cart, Ticket, and Edit Profile
-  const isFullWidth = activeTab === 'cart' || activeTab === 'ticket' || activeTab === 'edit-profile';
-  const panelWidth = isFullWidth ? 'w-full' : 'w-[35%]';
+  // Full width for Cart
+  const isFullWidth = activeTab === 'cart';
+  const panelWidth = isFullWidth ? 'w-full' : 'w-[45%]';
   
-  // Profile edit form state
-  const { user, token, setAuth } = useAuthStore();
+  const { user } = useAuthStore();
   const router = useRouter();
   const { items, updateQuantity, removeFromCart, clearCart } = useCartStore();
-  const [profileData, setProfileData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    company_name: '',
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
-  const [profileSaving, setProfileSaving] = useState(false);
-  const [profileError, setProfileError] = useState('');
-  const [profileSuccess, setProfileSuccess] = useState('');
 
   // Checkout flow state
   const [checkoutStep, setCheckoutStep] = useState<'products' | 'shipping' | 'review'>('products');
@@ -129,43 +118,125 @@ export default function DesignPanel({
     }
   }, [activeTab, user]);
 
-  // Load user data when edit-profile tab is active
-  useEffect(() => {
-    if (activeTab === 'edit-profile' && user) {
-      setProfileData({
-        name: user.name || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        company_name: user.company_name || '',
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
-      });
-      setProfileError('');
-      setProfileSuccess('');
-    }
-  }, [activeTab, user]);
 
   return (
-    <div className={`${panelWidth} bg-[#1E1E1E] border-r border-white/10 flex flex-col h-full`}>
-      <div className="p-4 border-b border-white/10 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-white">
+    <div 
+      className={`${panelWidth} border-r flex flex-col h-full transition-all shadow-lg`}
+      style={{ 
+        backgroundColor: 'var(--background)', 
+        borderColor: 'var(--border-color)',
+        boxShadow: '-2px 0 10px -2px rgba(0, 0, 0, 0.1)'
+      }}
+    >
+      <div 
+        className="border-b transition-colors"
+        style={{ borderColor: 'var(--border-color)' }}
+      >
+        <div 
+          className={`flex items-center justify-between transition-colors ${activeTab === 'cart' ? 'px-4 py-2' : 'p-4'}`}
+        >
+          <h2 
+            className={`font-semibold transition-colors ${activeTab === 'cart' ? 'text-base' : 'text-lg'}`}
+            style={{ color: 'var(--text-primary)' }}
+          >
           {activeTab === 'label-design' && 'Label Design'}
           {activeTab === 'upload' && 'Upload'}
           {activeTab === 'gallery' && 'Gallery'}
-          {activeTab === 'ticket' && 'Ticket'}
           {activeTab === 'cart' && 'Shopping Cart'}
-          {activeTab === 'edit-profile' && 'Edit Profile'}
         </h2>
         <button
           onClick={onClose}
-          className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+            className="p-2 rounded-lg transition-colors"
+            style={{ 
+              color: 'var(--text-muted)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+              e.currentTarget.style.color = 'var(--text-primary)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'transparent';
+              e.currentTarget.style.color = 'var(--text-muted)';
+            }}
         >
           <X className="w-5 h-5" />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Checkout Steps - Only show for Cart */}
+        {activeTab === 'cart' && (
+          <div className="flex items-center justify-center gap-1.5 px-4 pb-2">
+            <div 
+              className="flex items-center gap-1.5"
+              style={{ 
+                color: checkoutStep === 'products' ? '#4DB64F' : 
+                       (checkoutStep === 'shipping' || checkoutStep === 'review') ? '#4DB64F' : 
+                       'var(--text-muted)' 
+              }}
+            >
+              <div 
+                className="w-6 h-6 rounded-full flex items-center justify-center transition-colors text-xs"
+                style={{ 
+                  backgroundColor: checkoutStep === 'products' ? '#4DB64F' : 'var(--card-bg)',
+                  color: checkoutStep === 'products' ? '#ffffff' : 'var(--text-muted)'
+                }}
+              >
+                1
+              </div>
+              <span className="text-xs font-medium">Products</span>
+            </div>
+            <ChevronRight 
+              className="w-3 h-3 transition-colors"
+              style={{ color: 'var(--text-muted)' }}
+            />
+            <div 
+              className="flex items-center gap-1.5"
+              style={{ 
+                color: checkoutStep === 'shipping' ? '#4DB64F' : 
+                       checkoutStep === 'review' ? '#4DB64F' : 
+                       'var(--text-muted)' 
+              }}
+            >
+              <div 
+                className="w-6 h-6 rounded-full flex items-center justify-center transition-colors text-xs"
+                style={{ 
+                  backgroundColor: (checkoutStep === 'shipping' || checkoutStep === 'review') ? '#4DB64F' : 'var(--card-bg)',
+                  color: (checkoutStep === 'shipping' || checkoutStep === 'review') ? '#ffffff' : 'var(--text-muted)'
+                }}
+              >
+                2
+              </div>
+              <span className="text-xs font-medium">Shipping</span>
+            </div>
+            <ChevronRight 
+              className="w-3 h-3 transition-colors"
+              style={{ color: 'var(--text-muted)' }}
+            />
+            <div 
+              className="flex items-center gap-1.5"
+              style={{ 
+                color: checkoutStep === 'review' ? '#4DB64F' : 'var(--text-muted)' 
+              }}
+            >
+              <div 
+                className="w-6 h-6 rounded-full flex items-center justify-center transition-colors text-xs"
+                style={{ 
+                  backgroundColor: checkoutStep === 'review' ? '#4DB64F' : 'var(--card-bg)',
+                  color: checkoutStep === 'review' ? '#ffffff' : 'var(--text-muted)'
+                }}
+              >
+                3
+              </div>
+              <span className="text-xs font-medium">Review & Pay</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div 
+        className="flex-1 overflow-y-auto p-6 space-y-6 transition-colors"
+        style={{ color: 'var(--text-primary)' }}
+      >
         {/* Label Design Panel */}
         {activeTab === 'label-design' && (
           <LabelDesignPanel
@@ -174,6 +245,13 @@ export default function DesignPanel({
             setLabelTexture={setLabelTexture}
             showColorPicker={showColorPicker}
             setShowColorPicker={setShowColorPicker}
+            onClearUploadedImage={() => {
+              // Clear uploaded image when user starts designing
+              if (onDesignModeChange) {
+                onDesignModeChange('designed');
+              }
+              setLabelData({ ...labelData, image: null });
+            }}
           />
         )}
 
@@ -181,7 +259,12 @@ export default function DesignPanel({
         {activeTab === 'upload' && (
           <>
             <div>
-              <label className="block text-sm font-medium mb-2 text-gray-300">Upload Custom Image</label>
+              <label 
+                className="block text-sm font-medium mb-2 transition-colors"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Upload Custom Image
+              </label>
               <input
                 ref={fileInputRef}
                 type="file"
@@ -191,24 +274,53 @@ export default function DesignPanel({
               />
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="w-full px-4 py-3 bg-[#4DB64F] text-white rounded-lg hover:bg-[#45a049] transition-colors font-medium"
+                  className="w-full px-4 py-3 bg-[#4DB64F] text-white rounded-lg hover:bg-[#45a049] transition-all font-medium"
+                  style={{
+                    boxShadow: '0 4px 6px -1px rgba(77, 182, 79, 0.3), 0 2px 4px -1px rgba(77, 182, 79, 0.2)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(77, 182, 79, 0.4), 0 4px 6px -2px rgba(77, 182, 79, 0.3)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(77, 182, 79, 0.3), 0 2px 4px -1px rgba(77, 182, 79, 0.2)';
+                  }}
               >
                 Upload Image
               </button>
             </div>
 
             {labelData.image && (
-              <div className="mt-4">
-                <img src={labelData.image} alt="Uploaded" className="w-full rounded-lg" />
-                <button
-                  onClick={() => {
-                    setLabelData({ ...labelData, image: null });
-                    setLabelTexture(null);
-                  }}
-                  className="mt-2 text-red-400 text-sm hover:text-red-300"
-                >
-                  Remove Image
-                </button>
+              <div className="mt-4 space-y-3">
+                <div className="relative">
+                  <img src={labelData.image} alt="Uploaded" className="w-full rounded-lg border" style={{ borderColor: 'var(--border-color)' }} />
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={onAddToCart}
+                    className="flex-1 px-4 py-3 bg-[#4DB64F] text-white rounded-lg hover:bg-[#45a049] transition-all font-medium"
+                    style={{
+                      boxShadow: '0 4px 6px -1px rgba(77, 182, 79, 0.3), 0 2px 4px -1px rgba(77, 182, 79, 0.2)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(77, 182, 79, 0.4), 0 4px 6px -2px rgba(77, 182, 79, 0.3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(77, 182, 79, 0.3), 0 2px 4px -1px rgba(77, 182, 79, 0.2)';
+                    }}
+                  >
+                    Add to Cart
+                  </button>
+                  <button
+                    onClick={() => {
+                      setLabelData({ ...labelData, image: null });
+                      setLabelTexture(null);
+                    }}
+                    className="px-4 py-3 text-red-400 border border-red-400 rounded-lg hover:bg-red-400/10 transition-all font-medium"
+                    style={{ borderColor: 'rgba(239, 68, 68, 0.5)' }}
+                  >
+                    Remove
+                  </button>
+                </div>
               </div>
             )}
           </>
@@ -217,62 +329,68 @@ export default function DesignPanel({
         {/* Gallery Panel */}
         {activeTab === 'gallery' && (
           <div>
-            <p className="text-gray-300 mb-4">Browse your saved designs and templates</p>
+            <p 
+              className="mb-4 transition-colors"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              Browse your saved designs and templates
+            </p>
             <div className="grid grid-cols-2 gap-4">
               {/* Placeholder gallery items */}
               {[1, 2, 3, 4].map((item) => (
-                <div key={item} className="aspect-square bg-white/5 border border-white/10 rounded-lg flex items-center justify-center">
-                  <span className="text-gray-400 text-sm">Template {item}</span>
+                <div 
+                  key={item} 
+                  className="aspect-square border rounded-lg flex items-center justify-center transition-colors"
+                  style={{ 
+                    backgroundColor: 'var(--card-bg)', 
+                    borderColor: 'var(--border-color)' 
+                  }}
+                >
+                  <span 
+                    className="text-sm transition-colors"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    Template {item}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
         )}
 
-        {/* Ticket Panel */}
-        {activeTab === 'ticket' && (
-          <div>
-            <p className="text-gray-300 mb-4">Ticket management and support options</p>
-            <button className="w-full px-4 py-3 bg-[#4DB64F] text-white rounded-lg hover:bg-[#45a049] transition-colors font-medium">
-              Create Support Ticket
-            </button>
-          </div>
-        )}
-
         {/* Cart Panel - Multi-step Checkout */}
         {activeTab === 'cart' && (
           <div className="flex flex-col h-full">
-            {/* Step Indicator */}
-            <div className="flex items-center justify-center gap-2 mb-6 px-4 pt-4">
-              <div className={`flex items-center gap-2 ${checkoutStep === 'products' ? 'text-[#4DB64F]' : checkoutStep === 'shipping' || checkoutStep === 'review' ? 'text-[#4DB64F]' : 'text-gray-500'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutStep === 'products' ? 'bg-[#4DB64F] text-white' : 'bg-white/10 text-gray-400'}`}>
-                  1
-                </div>
-                <span className="text-sm font-medium">Products</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-gray-500" />
-              <div className={`flex items-center gap-2 ${checkoutStep === 'shipping' ? 'text-[#4DB64F]' : checkoutStep === 'review' ? 'text-[#4DB64F]' : 'text-gray-500'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutStep === 'shipping' ? 'bg-[#4DB64F] text-white' : checkoutStep === 'review' ? 'bg-[#4DB64F] text-white' : 'bg-white/10 text-gray-400'}`}>
-                  2
-                </div>
-                <span className="text-sm font-medium">Shipping</span>
-              </div>
-              <ChevronRight className="w-4 h-4 text-gray-500" />
-              <div className={`flex items-center gap-2 ${checkoutStep === 'review' ? 'text-[#4DB64F]' : 'text-gray-500'}`}>
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${checkoutStep === 'review' ? 'bg-[#4DB64F] text-white' : 'bg-white/10 text-gray-400'}`}>
-                  3
-                </div>
-                <span className="text-sm font-medium">Review & Pay</span>
-              </div>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-4 pb-4">
+            <div 
+              className="flex-1 overflow-y-auto px-4 pb-4 transition-colors max-w-5xl mx-auto w-full"
+              style={{ color: 'var(--text-primary)' }}
+            >
               {items.length === 0 ? (
-                <div className="bg-white/5 border border-white/10 rounded-lg p-8 text-center">
-                  <p className="text-gray-400 mb-4">Your cart is empty</p>
+                <div 
+                  className="border rounded-lg p-8 text-center transition-colors"
+                  style={{ 
+                    backgroundColor: 'var(--card-bg)', 
+                    borderColor: 'var(--border-color)' 
+                  }}
+                >
+                  <p 
+                    className="mb-4 transition-colors"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    Your cart is empty
+                  </p>
                   <button
                     onClick={onClose}
-                    className="px-6 py-3 bg-[#4DB64F] text-white rounded-lg hover:bg-[#45a049] transition-colors font-medium"
+                    className="px-6 py-3 bg-[#4DB64F] text-white rounded-lg hover:bg-[#45a049] transition-all font-medium"
+                    style={{
+                      boxShadow: '0 4px 6px -1px rgba(77, 182, 79, 0.3), 0 2px 4px -1px rgba(77, 182, 79, 0.2)'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(77, 182, 79, 0.4), 0 4px 6px -2px rgba(77, 182, 79, 0.3)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(77, 182, 79, 0.3), 0 2px 4px -1px rgba(77, 182, 79, 0.2)';
+                    }}
                   >
                     Continue Designing
                   </button>
@@ -282,23 +400,64 @@ export default function DesignPanel({
                   {/* Step 1: Products */}
                   {checkoutStep === 'products' && (
                     <div className="space-y-6">
-                      <h3 className="text-xl font-semibold text-white mb-4">Products</h3>
-                      <div className="space-y-4">
+                      <h3 
+                        className="text-xl font-semibold mb-4 transition-colors"
+                        style={{ color: 'var(--text-primary)' }}
+                      >
+                        Products
+                      </h3>
+                      <div className="space-y-3">
                         {items.map((item) => (
-                          <div key={item.design_id} className="bg-white/5 border border-white/10 rounded-lg p-4">
-                            <div className="flex items-center gap-4">
-                              {item.design?.bottle_snapshot && (
+                          <div 
+                            key={item.design_id} 
+                            className="border rounded-xl p-4 transition-all duration-200 shadow-md hover:shadow-lg"
+                            style={{ 
+                              backgroundColor: 'var(--card-bg)', 
+                              borderColor: 'var(--border-color)',
+                              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = 'rgba(77, 182, 79, 0.3)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = 'var(--border-color)';
+                            }}
+                          >
+                            <div className="flex items-start gap-4">
+                              {(item.design?.label_image || item.design?.bottle_snapshot) && (
+                                <div className="relative shrink-0">
                                 <img
-                                  src={item.design.bottle_snapshot}
+                                  src={item.design?.label_image || item.design?.bottle_snapshot}
                                   alt="Design preview"
-                                  className="w-20 h-20 object-cover rounded-lg"
-                                />
+                                    className="w-24 h-24 object-cover rounded-lg border transition-colors"
+                                    style={{ borderColor: 'var(--border-color)' }}
+                                  />
+                                </div>
                               )}
-                              <div className="flex-1">
-                                <h4 className="text-white font-medium mb-2">Custom Bottle Design</h4>
-                                <div className="space-y-2">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between mb-3">
+                                  <h4 
+                                    className="font-semibold text-base transition-colors"
+                                    style={{ color: 'var(--text-primary)' }}
+                                  >
+                                    Custom Bottle Design
+                                  </h4>
+                                  <button
+                                    onClick={() => removeFromCart(item.design_id)}
+                                    className="p-1.5 rounded-lg transition-colors hover:bg-red-500/20 shrink-0 ml-2"
+                                    title="Remove item"
+                                  >
+                                    <X className="w-4 h-4 text-red-400 hover:text-red-300" />
+                                  </button>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
                                   <div>
-                                    <label className="block text-sm font-medium mb-1 text-gray-300">Quantity (min 100)</label>
+                                    <label 
+                                      className="block text-xs font-medium mb-1.5 transition-colors"
+                                      style={{ color: 'var(--text-secondary)' }}
+                                    >
+                                      Quantity (min 100)
+                                    </label>
                                     <input
                                       type="number"
                                       min="100"
@@ -306,17 +465,35 @@ export default function DesignPanel({
                                       onChange={(e) =>
                                         handleQuantityChange(item.design_id, parseInt(e.target.value) || 100)
                                       }
-                                      className="w-24 px-3 py-1 bg-white/5 border border-white/20 rounded text-white focus:outline-none focus:border-[#4DB64F]"
+                                      className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4DB64F]/30 transition-all shadow-sm"
+                                      style={{
+                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                                      }}
+                                      style={{ 
+                                        backgroundColor: 'var(--input-bg)', 
+                                        borderColor: 'var(--input-border)',
+                                        color: 'var(--text-primary)'
+                                      }}
                                     />
                                   </div>
-                                  <p className="text-[#4DB64F] font-semibold">${item.price.toFixed(2)}</p>
+                                  <div>
+                                    <label 
+                                      className="block text-xs font-medium mb-1.5 transition-colors"
+                                      style={{ color: 'var(--text-secondary)' }}
+                                    >
+                                      Price
+                                    </label>
+                                    <div 
+                                      className="px-3 py-2 rounded-lg font-semibold text-lg transition-colors"
+                                      style={{ 
+                                        backgroundColor: 'rgba(77, 182, 79, 0.1)',
+                                        color: '#4DB64F'
+                                      }}
+                                    >
+                                      ${item.price.toFixed(2)}
+                                    </div>
+                                  </div>
                                 </div>
-                                <button
-                                  onClick={() => removeFromCart(item.design_id)}
-                                  className="mt-2 text-red-400 text-sm hover:text-red-300"
-                                >
-                                  Remove
-                                </button>
                               </div>
                             </div>
                           </div>
@@ -324,27 +501,65 @@ export default function DesignPanel({
                       </div>
 
                       {/* Order Summary */}
-                      <div className="bg-white/5 border border-white/10 rounded-lg p-4 mt-6">
-                        <h4 className="text-lg font-semibold text-white mb-4">Order Summary</h4>
-                        <div className="space-y-2 mb-4">
-                          <div className="flex justify-between text-gray-300">
-                            <span>Subtotal</span>
-                            <span>${items.reduce((sum, item) => sum + item.price, 0).toFixed(2)}</span>
+                      <div 
+                        className="border rounded-xl p-5 mt-6 transition-all shadow-md"
+                        style={{ 
+                          backgroundColor: 'var(--card-bg)', 
+                          borderColor: 'var(--border-color)' 
+                        }}
+                      >
+                        <h4 
+                          className="text-lg font-semibold mb-4 transition-colors"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
+                          Order Summary
+                        </h4>
+                        <div className="space-y-3 mb-5">
+                          <div 
+                            className="flex justify-between py-1.5 transition-colors"
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
+                            <span className="text-sm">Subtotal</span>
+                            <span className="font-medium">${items.reduce((sum, item) => sum + item.price, 0).toFixed(2)}</span>
                           </div>
-                          <div className="flex justify-between text-gray-300">
-                            <span>Shipping</span>
-                            <span className="text-gray-400">Calculated at checkout</span>
+                          <div 
+                            className="flex justify-between py-1.5 transition-colors"
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
+                            <span className="text-sm">Shipping</span>
+                            <span 
+                              className="text-xs transition-colors"
+                              style={{ color: 'var(--text-muted)' }}
+                            >
+                              Calculated at checkout
+                            </span>
                           </div>
-                          <div className="border-t border-white/10 pt-2 flex justify-between text-lg font-semibold text-white">
+                          <div 
+                            className="border-t pt-3 flex justify-between text-lg font-bold transition-colors"
+                            style={{ 
+                              borderColor: 'var(--border-color)',
+                              color: 'var(--text-primary)'
+                            }}
+                          >
                             <span>Total</span>
-                            <span>${items.reduce((sum, item) => sum + item.price, 0).toFixed(2)}</span>
+                            <span className="text-[#4DB64F]">${items.reduce((sum, item) => sum + item.price, 0).toFixed(2)}</span>
                           </div>
                         </div>
                         <button
                           onClick={() => setCheckoutStep('shipping')}
-                          className="w-full px-4 py-3 bg-[#4DB64F] text-white rounded-lg hover:bg-[#45a049] transition-colors font-medium"
+                          className="w-full px-6 py-3.5 bg-[#4DB64F] text-white rounded-lg hover:bg-[#45a049] transition-all duration-200 font-semibold active:scale-[0.98] flex items-center justify-center gap-2"
+                          style={{
+                            boxShadow: '0 10px 15px -3px rgba(77, 182, 79, 0.3), 0 4px 6px -2px rgba(77, 182, 79, 0.2)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(77, 182, 79, 0.4), 0 10px 10px -5px rgba(77, 182, 79, 0.2)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(77, 182, 79, 0.3), 0 4px 6px -2px rgba(77, 182, 79, 0.2)';
+                          }}
                         >
                           Continue to Shipping
+                          <ChevronRight className="w-4 h-4" />
                         </button>
                       </div>
                     </div>
@@ -353,7 +568,12 @@ export default function DesignPanel({
                   {/* Step 2: Shipping */}
                   {checkoutStep === 'shipping' && (
                     <div className="space-y-6">
-                      <h3 className="text-xl font-semibold text-white mb-4">Shipping</h3>
+                      <h3 
+                        className="text-xl font-semibold mb-4 transition-colors"
+                        style={{ color: 'var(--text-primary)' }}
+                      >
+                        Shipping
+                      </h3>
                       <form
                         onSubmit={(e) => {
                           e.preventDefault();
@@ -362,118 +582,261 @@ export default function DesignPanel({
                         className="space-y-4"
                       >
                         <div>
-                          <label className="block text-sm font-medium mb-2 text-gray-300">Company Name</label>
+                          <label 
+                            className="block text-sm font-medium mb-2 transition-colors"
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
+                            Company Name
+                          </label>
                           <input
                             type="text"
                             value={shippingData.company_name}
                             onChange={(e) => setShippingData({ ...shippingData, company_name: e.target.value })}
-                            className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F]"
+                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-all shadow-sm"
+                                      style={{
+                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                                      }}
+                            style={{ 
+                              backgroundColor: 'var(--input-bg)', 
+                              borderColor: 'var(--input-border)',
+                              color: 'var(--text-primary)'
+                            }}
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium mb-2 text-gray-300">Full Name *</label>
+                          <label 
+                            className="block text-sm font-medium mb-2 transition-colors"
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
+                            Full Name *
+                          </label>
                           <input
                             type="text"
                             required
                             value={shippingData.full_name}
                             onChange={(e) => setShippingData({ ...shippingData, full_name: e.target.value })}
-                            className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F]"
+                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-all shadow-sm"
+                                      style={{
+                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                                      }}
+                            style={{ 
+                              backgroundColor: 'var(--input-bg)', 
+                              borderColor: 'var(--input-border)',
+                              color: 'var(--text-primary)'
+                            }}
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium mb-2 text-gray-300">Email *</label>
+                          <label 
+                            className="block text-sm font-medium mb-2 transition-colors"
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
+                            Email *
+                          </label>
                           <input
                             type="email"
                             required
                             value={shippingData.email}
                             onChange={(e) => setShippingData({ ...shippingData, email: e.target.value })}
-                            className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F]"
+                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-all shadow-sm"
+                                      style={{
+                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                                      }}
+                            style={{ 
+                              backgroundColor: 'var(--input-bg)', 
+                              borderColor: 'var(--input-border)',
+                              color: 'var(--text-primary)'
+                            }}
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium mb-2 text-gray-300">Phone Number *</label>
+                          <label 
+                            className="block text-sm font-medium mb-2 transition-colors"
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
+                            Phone Number *
+                          </label>
                           <input
                             type="tel"
                             required
                             value={shippingData.phone}
                             onChange={(e) => setShippingData({ ...shippingData, phone: e.target.value })}
-                            className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F]"
+                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-all shadow-sm"
+                                      style={{
+                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                                      }}
+                            style={{ 
+                              backgroundColor: 'var(--input-bg)', 
+                              borderColor: 'var(--input-border)',
+                              color: 'var(--text-primary)'
+                            }}
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium mb-2 text-gray-300">Shipping Address 1 *</label>
+                          <label 
+                            className="block text-sm font-medium mb-2 transition-colors"
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
+                            Shipping Address 1 *
+                          </label>
                           <input
                             type="text"
                             required
                             value={shippingData.address1}
                             onChange={(e) => setShippingData({ ...shippingData, address1: e.target.value })}
-                            className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F]"
+                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-all shadow-sm"
+                                      style={{
+                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                                      }}
+                            style={{ 
+                              backgroundColor: 'var(--input-bg)', 
+                              borderColor: 'var(--input-border)',
+                              color: 'var(--text-primary)'
+                            }}
                           />
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium mb-2 text-gray-300">Shipping Address 2 (Optional)</label>
+                          <label 
+                            className="block text-sm font-medium mb-2 transition-colors"
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
+                            Shipping Address 2 (Optional)
+                          </label>
                           <input
                             type="text"
                             value={shippingData.address2}
                             onChange={(e) => setShippingData({ ...shippingData, address2: e.target.value })}
-                            className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F]"
+                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-all shadow-sm"
+                                      style={{
+                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                                      }}
+                            style={{ 
+                              backgroundColor: 'var(--input-bg)', 
+                              borderColor: 'var(--input-border)',
+                              color: 'var(--text-primary)'
+                            }}
                           />
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                           <div>
-                            <label className="block text-sm font-medium mb-2 text-gray-300">ZIP *</label>
+                            <label 
+                              className="block text-sm font-medium mb-2 transition-colors"
+                              style={{ color: 'var(--text-secondary)' }}
+                            >
+                              ZIP *
+                            </label>
                             <input
                               type="text"
                               required
                               value={shippingData.zip}
                               onChange={(e) => setShippingData({ ...shippingData, zip: e.target.value })}
-                              className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F]"
+                              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-all shadow-sm"
+                                      style={{
+                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                                      }}
+                              style={{ 
+                                backgroundColor: 'var(--input-bg)', 
+                                borderColor: 'var(--input-border)',
+                                color: 'var(--text-primary)'
+                              }}
                             />
                           </div>
 
                           <div>
-                            <label className="block text-sm font-medium mb-2 text-gray-300">City *</label>
+                            <label 
+                              className="block text-sm font-medium mb-2 transition-colors"
+                              style={{ color: 'var(--text-secondary)' }}
+                            >
+                              City *
+                            </label>
                             <input
                               type="text"
                               required
                               value={shippingData.city}
                               onChange={(e) => setShippingData({ ...shippingData, city: e.target.value })}
-                              className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F]"
+                              className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-all shadow-sm"
+                                      style={{
+                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                                      }}
+                              style={{ 
+                                backgroundColor: 'var(--input-bg)', 
+                                borderColor: 'var(--input-border)',
+                                color: 'var(--text-primary)'
+                              }}
                             />
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-sm font-medium mb-2 text-gray-300">Country *</label>
+                          <label 
+                            className="block text-sm font-medium mb-2 transition-colors"
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
+                            Country *
+                          </label>
                           <input
                             type="text"
                             required
                             value={shippingData.country}
                             onChange={(e) => setShippingData({ ...shippingData, country: e.target.value })}
-                            className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F]"
+                            className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-all shadow-sm"
+                                      style={{
+                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                                      }}
+                            style={{ 
+                              backgroundColor: 'var(--input-bg)', 
+                              borderColor: 'var(--input-border)',
+                              color: 'var(--text-primary)'
+                            }}
                           />
                         </div>
 
-                        <div className="flex gap-4 pt-4">
+                        <div className="flex gap-3 pt-4">
                           <button
                             type="button"
                             onClick={() => setCheckoutStep('products')}
-                            className="flex-1 px-4 py-3 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors font-medium flex items-center justify-center gap-2"
+                            className="flex-1 px-5 py-3 rounded-lg transition-all duration-200 font-semibold flex items-center justify-center gap-2 border active:scale-[0.98] shadow-sm"
+                            style={{
+                              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                            }}
+                            style={{ 
+                              backgroundColor: 'var(--card-bg)', 
+                              borderColor: 'var(--border-color)',
+                              color: 'var(--text-primary)'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                              e.currentTarget.style.borderColor = 'var(--text-muted)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                              e.currentTarget.style.borderColor = 'var(--border-color)';
+                            }}
                           >
                             <ChevronLeft className="w-4 h-4" />
                             Back
                           </button>
                           <button
                             type="submit"
-                            className="flex-1 px-4 py-3 bg-[#4DB64F] text-white rounded-lg hover:bg-[#45a049] transition-colors font-medium"
+                            className="flex-1 px-5 py-3 bg-[#4DB64F] text-white rounded-lg hover:bg-[#45a049] transition-all duration-200 font-semibold active:scale-[0.98] flex items-center justify-center gap-2"
+                            style={{
+                              boxShadow: '0 10px 15px -3px rgba(77, 182, 79, 0.3), 0 4px 6px -2px rgba(77, 182, 79, 0.2)'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(77, 182, 79, 0.4), 0 10px 10px -5px rgba(77, 182, 79, 0.2)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(77, 182, 79, 0.3), 0 4px 6px -2px rgba(77, 182, 79, 0.2)';
+                            }}
                           >
                             Continue to Review
+                            <ChevronRight className="w-4 h-4" />
                           </button>
                         </div>
                       </form>
@@ -483,7 +846,12 @@ export default function DesignPanel({
                   {/* Step 3: Review & Pay */}
                   {checkoutStep === 'review' && (
                     <div className="space-y-6">
-                      <h3 className="text-xl font-semibold text-white mb-4">Review & Pay</h3>
+                      <h3 
+                        className="text-xl font-semibold mb-4 transition-colors"
+                        style={{ color: 'var(--text-primary)' }}
+                      >
+                        Review & Pay
+                      </h3>
                       
                       {orderError && (
                         <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 text-red-400 text-sm">
@@ -492,73 +860,162 @@ export default function DesignPanel({
                       )}
 
                       {/* Products Review */}
-                      <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                        <h4 className="text-lg font-semibold text-white mb-4">Products</h4>
+                      <div 
+                        className="border rounded-xl p-5 transition-colors shadow-sm"
+                        style={{ 
+                          backgroundColor: 'var(--card-bg)', 
+                          borderColor: 'var(--border-color)' 
+                        }}
+                      >
+                        <h4 
+                          className="text-lg font-semibold mb-4 transition-colors"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
+                          Products
+                        </h4>
                         <div className="space-y-3">
                           {items.map((item) => (
-                            <div key={item.design_id} className="flex items-center gap-4 pb-3 border-b border-white/10 last:border-0">
+                            <div 
+                              key={item.design_id} 
+                              className="flex items-center gap-4 pb-3 border-b last:border-0 last:pb-0 transition-colors"
+                              style={{ borderColor: 'var(--border-color)' }}
+                            >
                               {item.design?.bottle_snapshot && (
                                 <img
                                   src={item.design.bottle_snapshot}
                                   alt="Design preview"
-                                  className="w-16 h-16 object-cover rounded-lg"
+                                  className="w-20 h-20 object-cover rounded-lg border transition-colors"
+                                  style={{ borderColor: 'var(--border-color)' }}
                                 />
                               )}
                               <div className="flex-1">
-                                <p className="text-white font-medium">Custom Bottle Design</p>
-                                <p className="text-gray-400 text-sm">Quantity: {item.quantity}</p>
+                                <p 
+                                  className="font-semibold mb-1 transition-colors"
+                                  style={{ color: 'var(--text-primary)' }}
+                                >
+                                  Custom Bottle Design
+                                </p>
+                                <p 
+                                  className="text-sm transition-colors"
+                                  style={{ color: 'var(--text-muted)' }}
+                                >
+                                  Quantity: {item.quantity} bottles
+                                </p>
                               </div>
-                              <p className="text-[#4DB64F] font-semibold">${item.price.toFixed(2)}</p>
+                              <p className="text-[#4DB64F] font-bold text-lg">${item.price.toFixed(2)}</p>
                             </div>
                           ))}
                         </div>
                       </div>
 
                       {/* Shipping Review */}
-                      <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                        <h4 className="text-lg font-semibold text-white mb-4">Shipping Address</h4>
-                        <div className="space-y-1 text-gray-300 text-sm">
-                          <p>{shippingData.full_name}</p>
+                      <div 
+                        className="border rounded-xl p-5 transition-colors shadow-sm"
+                        style={{ 
+                          backgroundColor: 'var(--card-bg)', 
+                          borderColor: 'var(--border-color)' 
+                        }}
+                      >
+                        <h4 
+                          className="text-lg font-semibold mb-4 transition-colors"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
+                          Shipping Address
+                        </h4>
+                        <div 
+                          className="space-y-1.5 text-sm transition-colors leading-relaxed"
+                          style={{ color: 'var(--text-secondary)' }}
+                        >
+                          <p className="font-medium" style={{ color: 'var(--text-primary)' }}>{shippingData.full_name}</p>
                           {shippingData.company_name && <p>{shippingData.company_name}</p>}
                           <p>{shippingData.address1}</p>
                           {shippingData.address2 && <p>{shippingData.address2}</p>}
                           <p>{shippingData.city}, {shippingData.zip}</p>
                           <p>{shippingData.country}</p>
-                          <p className="pt-2">{shippingData.phone}</p>
+                          <div className="pt-2 space-y-1">
+                            <p>{shippingData.phone}</p>
                           <p>{shippingData.email}</p>
+                          </div>
                         </div>
                       </div>
 
                       {/* Order Summary */}
-                      <div className="bg-white/5 border border-white/10 rounded-lg p-4">
-                        <h4 className="text-lg font-semibold text-white mb-4">Order Summary</h4>
-                        <div className="space-y-2 mb-4">
-                          <div className="flex justify-between text-gray-300">
-                            <span>Subtotal</span>
-                            <span>${items.reduce((sum, item) => sum + item.price, 0).toFixed(2)}</span>
+                      <div 
+                        className="border rounded-xl p-5 transition-colors shadow-sm"
+                        style={{ 
+                          backgroundColor: 'var(--card-bg)', 
+                          borderColor: 'var(--border-color)' 
+                        }}
+                      >
+                        <h4 
+                          className="text-lg font-semibold mb-4 transition-colors"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
+                          Order Summary
+                        </h4>
+                        <div className="space-y-3 mb-5">
+                          <div 
+                            className="flex justify-between py-1.5 transition-colors"
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
+                            <span className="text-sm">Subtotal</span>
+                            <span className="font-medium">${items.reduce((sum, item) => sum + item.price, 0).toFixed(2)}</span>
                           </div>
-                          <div className="flex justify-between text-gray-300">
-                            <span>Shipping</span>
-                            <span className="text-gray-400">Calculated at checkout</span>
+                          <div 
+                            className="flex justify-between py-1.5 transition-colors"
+                            style={{ color: 'var(--text-secondary)' }}
+                          >
+                            <span className="text-sm">Shipping</span>
+                            <span 
+                              className="text-xs transition-colors"
+                              style={{ color: 'var(--text-muted)' }}
+                            >
+                              Calculated at checkout
+                            </span>
                           </div>
-                          <div className="border-t border-white/10 pt-2 flex justify-between text-lg font-semibold text-white">
+                          <div 
+                            className="border-t pt-3 flex justify-between text-lg font-bold transition-colors"
+                            style={{ 
+                              borderColor: 'var(--border-color)',
+                              color: 'var(--text-primary)'
+                            }}
+                          >
                             <span>Total</span>
-                            <span>${items.reduce((sum, item) => sum + item.price, 0).toFixed(2)}</span>
+                            <span className="text-[#4DB64F]">${items.reduce((sum, item) => sum + item.price, 0).toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
 
-                      <div className="bg-yellow-500/10 border border-yellow-500/50 rounded-lg p-4">
-                        <p className="text-sm text-yellow-400">
-                          <strong>Note:</strong> Payment integration is not implemented yet. Orders will be marked as successful for testing purposes.
+                      <div 
+                        className="border rounded-xl p-4 transition-colors"
+                        style={{ 
+                          backgroundColor: 'rgba(234, 179, 8, 0.1)', 
+                          borderColor: 'rgba(234, 179, 8, 0.3)'
+                        }}
+                      >
+                        <p className="text-sm leading-relaxed" style={{ color: '#fbbf24' }}>
+                          <strong style={{ color: '#fde047' }}>Note:</strong> Payment integration is not implemented yet. Orders will be marked as successful for testing purposes.
                         </p>
                       </div>
 
-                      <div className="flex gap-4 pt-4">
+                      <div className="flex gap-3 pt-4">
                         <button
                           type="button"
                           onClick={() => setCheckoutStep('shipping')}
-                          className="flex-1 px-4 py-3 bg-white/10 text-white rounded-lg hover:bg-white/20 transition-colors font-medium flex items-center justify-center gap-2"
+                          className="flex-1 px-5 py-3.5 rounded-lg transition-all duration-200 font-semibold flex items-center justify-center gap-2 border active:scale-[0.98]"
+                          style={{ 
+                            backgroundColor: 'var(--card-bg)', 
+                            borderColor: 'var(--border-color)',
+                            color: 'var(--text-primary)'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                            e.currentTarget.style.borderColor = 'var(--text-muted)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                            e.currentTarget.style.borderColor = 'var(--border-color)';
+                          }}
                         >
                           <ChevronLeft className="w-4 h-4" />
                           Back
@@ -588,9 +1045,29 @@ export default function DesignPanel({
                             }
                           }}
                           disabled={orderLoading}
-                          className="flex-1 px-4 py-3 bg-[#4DB64F] text-white rounded-lg hover:bg-[#45a049] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                          className="flex-1 px-5 py-3.5 bg-[#4DB64F] text-white rounded-lg hover:bg-[#45a049] transition-all duration-200 font-semibold active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                          style={{
+                            boxShadow: orderLoading ? '0 4px 6px -1px rgba(77, 182, 79, 0.2)' : '0 10px 15px -3px rgba(77, 182, 79, 0.3), 0 4px 6px -2px rgba(77, 182, 79, 0.2)'
+                          }}
+                          onMouseEnter={(e) => {
+                            if (!orderLoading) {
+                              e.currentTarget.style.boxShadow = '0 20px 25px -5px rgba(77, 182, 79, 0.4), 0 10px 10px -5px rgba(77, 182, 79, 0.2)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (!orderLoading) {
+                              e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(77, 182, 79, 0.3), 0 4px 6px -2px rgba(77, 182, 79, 0.2)';
+                            }
+                          }}
                         >
-                          {orderLoading ? 'Processing...' : 'Place Order'}
+                          {orderLoading ? (
+                            <span className="flex items-center gap-2">
+                              <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                              Processing...
+                            </span>
+                          ) : (
+                            'Place Order'
+                          )}
                         </button>
                       </div>
                     </div>
@@ -601,182 +1078,6 @@ export default function DesignPanel({
           </div>
         )}
 
-        {/* Edit Profile Panel */}
-        {activeTab === 'edit-profile' && (
-          <div className="flex justify-center">
-            <div className="w-full max-w-4xl space-y-6">
-              {profileError && (
-                <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-4 text-red-400 text-sm">
-                  {profileError}
-                </div>
-              )}
-              {profileSuccess && (
-                <div className="bg-green-500/10 border border-green-500/50 rounded-lg p-4 text-green-400 text-sm">
-                  {profileSuccess}
-                </div>
-              )}
-              
-              <form
-              onSubmit={async (e) => {
-                e.preventDefault();
-                setProfileError('');
-                setProfileSuccess('');
-                setProfileSaving(true);
-
-                try {
-                  // Validate password if new password is provided
-                  if (profileData.newPassword) {
-                    if (!profileData.currentPassword) {
-                      setProfileError('Current password is required to change password');
-                      setProfileSaving(false);
-                      return;
-                    }
-                    if (profileData.newPassword !== profileData.confirmPassword) {
-                      setProfileError('New passwords do not match');
-                      setProfileSaving(false);
-                      return;
-                    }
-                    if (profileData.newPassword.length < 6) {
-                      setProfileError('New password must be at least 6 characters');
-                      setProfileSaving(false);
-                      return;
-                    }
-                  }
-
-                  const updateData: any = {
-                    name: profileData.name,
-                    email: profileData.email,
-                    phone: profileData.phone || '',
-                    company_name: profileData.company_name || '',
-                  };
-
-                  if (profileData.newPassword) {
-                    updateData.currentPassword = profileData.currentPassword;
-                    updateData.newPassword = profileData.newPassword;
-                  }
-
-                  const response = await authAPI.updateProfile(updateData);
-                  
-                  // Update auth store with new user data
-                  if (response.user && token) {
-                    setAuth(response.user, token);
-                  }
-                  
-                  setProfileSuccess('Profile updated successfully!');
-                  
-                  // Clear password fields
-                  setProfileData({
-                    ...profileData,
-                    currentPassword: '',
-                    newPassword: '',
-                    confirmPassword: '',
-                  });
-                } catch (error: any) {
-                  setProfileError(error.message || 'Failed to update profile');
-                } finally {
-                  setProfileSaving(false);
-                }
-              }}
-              className="space-y-4"
-            >
-              {/* Name */}
-              <div>
-                <label className="block text-sm font-medium mb-2 text-gray-300">Name</label>
-                <input
-                  type="text"
-                  value={profileData.name}
-                  onChange={(e) => setProfileData({ ...profileData, name: e.target.value })}
-                  className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F]"
-                  required
-                />
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium mb-2 text-gray-300">Email</label>
-                <input
-                  type="email"
-                  value={profileData.email}
-                  onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                  className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F]"
-                  required
-                />
-              </div>
-
-              {/* Phone */}
-              <div>
-                <label className="block text-sm font-medium mb-2 text-gray-300">Phone</label>
-                <input
-                  type="tel"
-                  value={profileData.phone}
-                  onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
-                  className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F]"
-                />
-              </div>
-
-              {/* Company Name */}
-              <div>
-                <label className="block text-sm font-medium mb-2 text-gray-300">Company Name</label>
-                <input
-                  type="text"
-                  value={profileData.company_name}
-                  onChange={(e) => setProfileData({ ...profileData, company_name: e.target.value })}
-                  className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F]"
-                />
-              </div>
-
-              {/* Password Change Section */}
-              <div className="pt-4 border-t border-white/10">
-                <h3 className="text-md font-medium mb-4 text-gray-300">Change Password (Optional)</h3>
-                
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-gray-300">Current Password</label>
-                    <input
-                      type="password"
-                      value={profileData.currentPassword}
-                      onChange={(e) => setProfileData({ ...profileData, currentPassword: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F]"
-                      placeholder="Enter current password to change"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-gray-300">New Password</label>
-                    <input
-                      type="password"
-                      value={profileData.newPassword}
-                      onChange={(e) => setProfileData({ ...profileData, newPassword: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F]"
-                      placeholder="Enter new password"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-gray-300">Confirm New Password</label>
-                    <input
-                      type="password"
-                      value={profileData.confirmPassword}
-                      onChange={(e) => setProfileData({ ...profileData, confirmPassword: e.target.value })}
-                      className="w-full px-4 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F]"
-                      placeholder="Confirm new password"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Save Button */}
-              <button
-                type="submit"
-                disabled={profileSaving}
-                className="w-full px-4 py-3 bg-[#4DB64F] text-white rounded-lg hover:bg-[#45a049] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {profileSaving ? 'Saving...' : 'Save Changes'}
-              </button>
-            </form>
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

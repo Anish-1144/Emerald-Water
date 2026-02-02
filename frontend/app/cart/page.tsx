@@ -7,23 +7,31 @@ import { designAPI } from '@/lib/api';
 
 export default function CartPage() {
   const router = useRouter();
-  const { user, token } = useAuthStore();
+  const { user } = useAuthStore();
   const { items, updateQuantity, removeFromCart, addToCart } = useCartStore();
   const { currentDesign } = useDesignStore();
   const [designs, setDesigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!user || !token) {
-      router.push('/login');
+    // Load saved designs if user is logged in, otherwise just handle current design
+    loadDesigns();
+  }, [user, router, currentDesign]);
+
+  const loadDesigns = async () => {
+    if (!user) {
+      // If not logged in, just use current design if available
+      if (currentDesign && !items.find(i => i.design_id === currentDesign._id)) {
+        addToCart({
+          design_id: currentDesign._id!,
+          design: currentDesign,
+          quantity: 100,
+          price: calculatePrice(100),
+        });
+      }
       return;
     }
 
-    // Load saved designs
-    loadDesigns();
-  }, [user, token, router, currentDesign]);
-
-  const loadDesigns = async () => {
     try {
       const savedDesigns = await designAPI.getDesigns();
       setDesigns(savedDesigns);
@@ -77,35 +85,52 @@ export default function CartPage() {
 
   const total = items.reduce((sum, item) => sum + item.price, 0);
 
-  if (!user) return null;
-
   return (
-    <div className="min-h-screen bg-[#1E1E1E] p-4">
+    <div 
+      className="min-h-screen p-4 transition-colors"
+      style={{ backgroundColor: 'var(--background)' }}
+    >
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-white">Shopping Cart</h1>
-          <div className="flex gap-4">
+          <h1 
+            className="text-3xl font-bold transition-colors"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            Shopping Cart
+          </h1>
             <button
               onClick={() => router.push('/design')}
-              className="px-4 py-2 bg-white/10 hover:bg-white/20 border border-white/20 text-white rounded-lg transition-colors"
+            className="px-4 py-2 border rounded-lg transition-colors"
+            style={{ 
+              backgroundColor: 'var(--card-bg)', 
+              borderColor: 'var(--border-color)',
+              color: 'var(--text-primary)'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+            }}
             >
               Continue Designing
             </button>
-            <button
-              onClick={() => {
-                useAuthStore.getState().logout();
-                router.push('/');
-              }}
-              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-            >
-              Logout
-            </button>
-          </div>
         </div>
 
         {items.length === 0 ? (
-          <div className="bg-white/5 border border-white/10 rounded-lg shadow-lg p-8 text-center">
-            <p className="text-gray-300 mb-4 text-lg">Your cart is empty</p>
+          <div 
+            className="border rounded-lg shadow-lg p-8 text-center transition-colors"
+            style={{ 
+              backgroundColor: 'var(--card-bg)', 
+              borderColor: 'var(--border-color)' 
+            }}
+          >
+            <p 
+              className="mb-4 text-lg transition-colors"
+              style={{ color: 'var(--text-secondary)' }}
+            >
+              Your cart is empty
+            </p>
             <button
               onClick={() => router.push('/design')}
               className="px-6 py-3 bg-[#4DB64F] text-white rounded-lg hover:bg-[#45a049] transition-colors font-medium"
@@ -119,26 +144,49 @@ export default function CartPage() {
               {items.map((item) => {
                 const design = designs.find(d => d._id === item.design_id) || item.design;
                 return (
-                  <div key={item.design_id} className="bg-white/5 border border-white/10 rounded-lg shadow-lg p-6">
+                  <div 
+                    key={item.design_id} 
+                    className="border rounded-lg shadow-lg p-6 transition-colors"
+                    style={{ 
+                      backgroundColor: 'var(--card-bg)', 
+                      borderColor: 'var(--border-color)' 
+                    }}
+                  >
                     <div className="flex gap-4">
-                      <div className="w-32 h-32 bg-white/10 rounded-lg overflow-hidden shrink-0">
-                        {design?.bottle_snapshot ? (
+                      <div 
+                        className="w-32 h-32 rounded-lg overflow-hidden shrink-0 transition-colors"
+                        style={{ backgroundColor: 'var(--input-bg)' }}
+                      >
+                        {(design?.label_image || design?.bottle_snapshot) ? (
                           <img
-                            src={design.bottle_snapshot}
-                            alt="Bottle preview"
+                            src={design?.label_image || design?.bottle_snapshot}
+                            alt="Design preview"
                             className="w-full h-full object-cover"
                           />
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-gray-400">
+                          <div 
+                            className="w-full h-full flex items-center justify-center transition-colors"
+                            style={{ color: 'var(--text-muted)' }}
+                          >
                             Preview
                           </div>
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-semibold mb-2 text-white">Custom Bottle Design</h3>
+                        <h3 
+                          className="text-lg font-semibold mb-2 transition-colors"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
+                          Custom Bottle Design
+                        </h3>
                         <div className="space-y-3">
                           <div>
-                            <label className="block text-sm font-medium mb-1 text-gray-300">Quantity (min 100)</label>
+                            <label 
+                              className="block text-sm font-medium mb-1 transition-colors"
+                              style={{ color: 'var(--text-secondary)' }}
+                            >
+                              Quantity (min 100)
+                            </label>
                             <input
                               type="number"
                               min="100"
@@ -146,10 +194,18 @@ export default function CartPage() {
                               onChange={(e) =>
                                 handleQuantityChange(item.design_id, parseInt(e.target.value) || 100)
                               }
-                              className="w-24 px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F]"
+                              className="w-24 px-3 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-colors"
+                              style={{ 
+                                backgroundColor: 'var(--input-bg)', 
+                                borderColor: 'var(--input-border)',
+                                color: 'var(--text-primary)'
+                              }}
                             />
                           </div>
-                          <div className="text-lg font-semibold text-white">
+                          <div 
+                            className="text-lg font-semibold transition-colors"
+                            style={{ color: 'var(--text-primary)' }}
+                          >
                             ${item.price.toFixed(2)}
                           </div>
                         </div>
@@ -167,20 +223,47 @@ export default function CartPage() {
             </div>
 
             <div className="lg:col-span-1">
-              <div className="bg-white/5 border border-white/10 rounded-lg shadow-lg p-6 sticky top-4">
-                <h2 className="text-xl font-semibold mb-4 text-white">Order Summary</h2>
+              <div 
+                className="border rounded-lg shadow-lg p-6 sticky top-4 transition-colors"
+                style={{ 
+                  backgroundColor: 'var(--card-bg)', 
+                  borderColor: 'var(--border-color)' 
+                }}
+              >
+                <h2 
+                  className="text-xl font-semibold mb-4 transition-colors"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  Order Summary
+                </h2>
                 <div className="space-y-3 mb-4">
-                  <div className="flex justify-between text-gray-300">
+                  <div className="flex justify-between transition-colors" style={{ color: 'var(--text-secondary)' }}>
                     <span>Subtotal</span>
-                    <span className="text-white font-medium">${total.toFixed(2)}</span>
+                    <span 
+                      className="font-medium transition-colors"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
+                      ${total.toFixed(2)}
+                    </span>
                   </div>
-                  <div className="flex justify-between text-gray-300">
+                  <div className="flex justify-between transition-colors" style={{ color: 'var(--text-secondary)' }}>
                     <span>Shipping</span>
-                    <span className="text-gray-400 text-sm">Calculated at checkout</span>
+                    <span 
+                      className="text-sm transition-colors"
+                      style={{ color: 'var(--text-muted)' }}
+                    >
+                      Calculated at checkout
+                    </span>
                   </div>
-                  <div className="border-t border-white/10 pt-3 flex justify-between text-lg font-semibold">
-                    <span className="text-white">Total</span>
-                    <span className="text-white">${total.toFixed(2)}</span>
+                  <div 
+                    className="border-t pt-3 flex justify-between text-lg font-semibold transition-colors"
+                    style={{ 
+                      borderColor: 'var(--border-color)',
+                      color: 'var(--text-primary)'
+                    }}
+                  >
+                    <span>Total</span>
+                    <span>${total.toFixed(2)}</span>
                   </div>
                 </div>
                 <button

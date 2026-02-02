@@ -5,9 +5,6 @@ import { useLabelEditorStore } from '@/store/useLabelEditorStore';
 import { LabelElement } from '@/store/useLabelEditorStore';
 import FigmaColorPicker from '@/components/ui/FigmaColorPicker';
 import NumericInput from '@/components/ui/NumericInput';
-import {
-  Trash2,
-} from 'lucide-react';
 
 interface LabelElementInspectorProps {
   element: LabelElement;
@@ -16,24 +13,19 @@ interface LabelElementInspectorProps {
 export default function LabelElementInspector({ element }: LabelElementInspectorProps) {
   const {
     updateElement,
-    deleteElement,
   } = useLabelEditorStore();
 
   const [showColorPicker, setShowColorPicker] = useState(false);
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between mb-2">
-        <h4 className="text-sm font-semibold text-white">
+      <div className="mb-2">
+        <h4 
+          className="text-sm font-semibold transition-colors"
+          style={{ color: 'var(--text-primary)' }}
+        >
           {element.type === 'text' ? 'Text Element' : 'Image Element'}
         </h4>
-        <button
-          onClick={() => deleteElement(element.id)}
-          className="p-1.5 hover:bg-red-500/20 rounded text-red-400 hover:text-red-300 transition-colors"
-          title="Delete"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
       </div>
 
       {/* Position & Size */}
@@ -75,13 +67,21 @@ export default function LabelElementInspector({ element }: LabelElementInspector
       {element.type === 'text' && (
         <>
           <div>
-            <label className="block text-sm font-medium mb-2 text-gray-300">
+            <label 
+              className="block text-sm font-medium mb-2 transition-colors"
+              style={{ color: 'var(--text-secondary)' }}
+            >
               Text Content
             </label>
             <textarea
               value={element.data}
               onChange={(e) => updateElement(element.id, { data: e.target.value })}
-              className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F] text-sm"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] text-sm transition-colors"
+              style={{ 
+                backgroundColor: 'var(--input-bg)', 
+                borderColor: 'var(--input-border)',
+                color: 'var(--text-primary)'
+              }}
               rows={2}
             />
           </div>
@@ -95,7 +95,10 @@ export default function LabelElementInspector({ element }: LabelElementInspector
           />
 
           <div>
-            <label className="block text-sm font-medium mb-2 text-gray-300">
+            <label 
+              className="block text-sm font-medium mb-2 transition-colors"
+              style={{ color: 'var(--text-secondary)' }}
+            >
               Font Family
             </label>
             <select
@@ -103,7 +106,12 @@ export default function LabelElementInspector({ element }: LabelElementInspector
               onChange={(e) =>
                 updateElement(element.id, { fontFamily: e.target.value })
               }
-              className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F] text-sm"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] text-sm transition-colors"
+              style={{ 
+                backgroundColor: 'var(--input-bg)', 
+                borderColor: 'var(--input-border)',
+                color: 'var(--text-primary)'
+              }}
             >
               <option value="Arial">Arial</option>
               <option value="Helvetica">Helvetica</option>
@@ -119,16 +127,25 @@ export default function LabelElementInspector({ element }: LabelElementInspector
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2 text-gray-300">
+            <label 
+              className="block text-sm font-medium mb-2 transition-colors"
+              style={{ color: 'var(--text-secondary)' }}
+            >
               Text Color
             </label>
             <div className="flex items-center gap-3">
               <div
-                className="w-10 h-10 rounded border-2 border-white/20 cursor-pointer"
-                style={{ backgroundColor: element.color || '#000000' }}
+                className="w-10 h-10 rounded border-2 cursor-pointer transition-colors"
+                style={{ 
+                  backgroundColor: element.color || '#000000',
+                  borderColor: 'var(--border-color)'
+                }}
                 onClick={() => setShowColorPicker(!showColorPicker)}
               />
-              <span className="text-xs text-gray-400 flex-1">
+              <span 
+                className="text-xs flex-1 transition-colors"
+                style={{ color: 'var(--text-muted)' }}
+              >
                 {(element.color || '#000000').toUpperCase()}
               </span>
             </div>
@@ -143,7 +160,10 @@ export default function LabelElementInspector({ element }: LabelElementInspector
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-2 text-gray-300">
+            <label 
+              className="block text-sm font-medium mb-2 transition-colors"
+              style={{ color: 'var(--text-secondary)' }}
+            >
               Text Align
             </label>
             <select
@@ -153,7 +173,12 @@ export default function LabelElementInspector({ element }: LabelElementInspector
                   textAlign: e.target.value as 'left' | 'center' | 'right',
                 })
               }
-              className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F] text-sm"
+              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] text-sm transition-colors"
+              style={{ 
+                backgroundColor: 'var(--input-bg)', 
+                borderColor: 'var(--input-border)',
+                color: 'var(--text-primary)'
+              }}
             >
               <option value="left">Left</option>
               <option value="center">Center</option>
@@ -168,11 +193,22 @@ export default function LabelElementInspector({ element }: LabelElementInspector
                   fontWeight: element.fontWeight === 'bold' ? 'normal' : 'bold',
                 })
               }
-              className={`flex-1 px-3 py-2 rounded-lg border transition-colors text-sm ${
-                element.fontWeight === 'bold'
-                  ? 'bg-[#4DB64F] text-white border-[#4DB64F]'
-                  : 'bg-white/5 text-white border-white/20 hover:bg-white/10'
-              }`}
+              className="flex-1 px-3 py-2 rounded-lg border transition-colors text-sm"
+              style={{
+                backgroundColor: element.fontWeight === 'bold' ? '#4DB64F' : 'var(--card-bg)',
+                borderColor: element.fontWeight === 'bold' ? '#4DB64F' : 'var(--border-color)',
+                color: 'var(--text-primary)',
+              }}
+              onMouseEnter={(e) => {
+                if (element.fontWeight !== 'bold') {
+                  e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (element.fontWeight !== 'bold') {
+                  e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                }
+              }}
             >
               Bold
             </button>
@@ -182,11 +218,22 @@ export default function LabelElementInspector({ element }: LabelElementInspector
                   fontStyle: element.fontStyle === 'italic' ? 'normal' : 'italic',
                 })
               }
-              className={`flex-1 px-3 py-2 rounded-lg border transition-colors text-sm ${
-                element.fontStyle === 'italic'
-                  ? 'bg-[#4DB64F] text-white border-[#4DB64F]'
-                  : 'bg-white/5 text-white border-white/20 hover:bg-white/10'
-              }`}
+              className="flex-1 px-3 py-2 rounded-lg border transition-colors text-sm"
+              style={{
+                backgroundColor: element.fontStyle === 'italic' ? '#4DB64F' : 'var(--card-bg)',
+                borderColor: element.fontStyle === 'italic' ? '#4DB64F' : 'var(--border-color)',
+                color: 'var(--text-primary)',
+              }}
+              onMouseEnter={(e) => {
+                if (element.fontStyle !== 'italic') {
+                  e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (element.fontStyle !== 'italic') {
+                  e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                }
+              }}
             >
               Italic
             </button>
@@ -197,11 +244,22 @@ export default function LabelElementInspector({ element }: LabelElementInspector
                     element.textDecoration === 'underline' ? 'none' : 'underline',
                 })
               }
-              className={`flex-1 px-3 py-2 rounded-lg border transition-colors text-sm ${
-                element.textDecoration === 'underline'
-                  ? 'bg-[#4DB64F] text-white border-[#4DB64F]'
-                  : 'bg-white/5 text-white border-white/20 hover:bg-white/10'
-              }`}
+              className="flex-1 px-3 py-2 rounded-lg border transition-colors text-sm"
+              style={{
+                backgroundColor: element.textDecoration === 'underline' ? '#4DB64F' : 'var(--card-bg)',
+                borderColor: element.textDecoration === 'underline' ? '#4DB64F' : 'var(--border-color)',
+                color: 'var(--text-primary)',
+              }}
+              onMouseEnter={(e) => {
+                if (element.textDecoration !== 'underline') {
+                  e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (element.textDecoration !== 'underline') {
+                  e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                }
+              }}
             >
               Underline
             </button>

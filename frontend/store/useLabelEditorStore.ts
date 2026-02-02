@@ -174,8 +174,8 @@ export const useLabelEditorStore = create<LabelEditorState>((set, get) => ({
   history: [],
   historyIndex: -1,
   maxHistorySize: 50,
-  canvasWidth: 2048,
-  canvasHeight: 1024,
+  canvasWidth: 2081,
+  canvasHeight: 544,
 
   // Set background color
   setBackgroundColor: (color) => {

@@ -9,6 +9,7 @@ import {
 } from '@/store/useLabelEditorStore';
 import FigmaColorPicker from '@/components/ui/FigmaColorPicker';
 import NumericInput from '@/components/ui/NumericInput';
+import { useThemeStore } from '@/lib/store';
 import {
   isPointInElement,
   getResizeHandle,
@@ -18,8 +19,8 @@ import {
   getElementCorners,
 } from '@/lib/canvasUtils';
 
-const CANVAS_WIDTH = 2048;
-const CANVAS_HEIGHT = 1024;
+const CANVAS_WIDTH = 2081;
+const CANVAS_HEIGHT = 544;
 
 interface LabelEditorModalProps {
   isOpen: boolean;
@@ -32,9 +33,10 @@ export default function LabelEditorModal({
   onClose,
   onExport,
 }: LabelEditorModalProps) {
+  const { theme } = useThemeStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [displayScale, setDisplayScale] = useState(0.3);
+  const [displayScale, setDisplayScale] = useState(0.5);
   const [isDragging, setIsDragging] = useState(false);
   const [isResizing, setIsResizing] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
@@ -245,7 +247,7 @@ export default function LabelEditorModal({
       ctx.setLineDash([]);
 
       // Draw resize handles - smaller size for better precision
-      const handleSize = 5 / displayScale; // Reduced from 8 to 5
+      const handleSize = 3 / displayScale; // Reduced to 3 for smaller handles
       const centerX = (selectedElement.x + selectedElement.width / 2) * displayScale;
       const centerY = (selectedElement.y + selectedElement.height / 2) * displayScale;
       const rotation = (selectedElement.rotation * Math.PI) / 180;
@@ -575,30 +577,66 @@ export default function LabelEditorModal({
 
   return (
     <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
-      <div className="bg-[#1E1E1E] rounded-xl border border-white/10 w-full max-w-[95vw] h-[90vh] flex flex-col">
+      <div 
+        className="rounded-xl border w-full max-w-[95vw] h-[90vh] flex flex-col transition-colors"
+        style={{ 
+          backgroundColor: 'var(--background)', 
+          borderColor: 'var(--border-color)' 
+        }}
+      >
         {/* Header */}
-        <div className="p-4 border-b border-white/10 flex items-center justify-between">
-          <h2 className="text-xl font-semibold text-white">Label Editor</h2>
+        <div 
+          className="p-4 border-b flex items-center justify-between transition-colors"
+          style={{ borderColor: 'var(--border-color)' }}
+        >
+          <h2 
+            className="text-xl font-semibold transition-colors"
+            style={{ color: 'var(--text-primary)' }}
+          >
+            Label Editor
+          </h2>
           <div className="flex items-center gap-3">
             {/* Add Elements */}
             <button
               onClick={handleAddText}
-              className={`px-3 py-2 border rounded-lg text-white flex items-center gap-2 transition-colors text-sm ${
-                selectedElement?.type === 'text'
-                  ? 'bg-[#4DB64F] hover:bg-[#45a049] border-[#4DB64F]'
-                  : 'bg-white/5 hover:bg-white/10 border-white/20'
-              }`}
+              className="px-3 py-2 border rounded-lg flex items-center gap-2 transition-colors text-sm"
+              style={{
+                backgroundColor: selectedElement?.type === 'text' ? '#4DB64F' : 'var(--card-bg)',
+                borderColor: selectedElement?.type === 'text' ? '#4DB64F' : 'var(--border-color)',
+                color: 'var(--text-primary)',
+              }}
+              onMouseEnter={(e) => {
+                if (selectedElement?.type !== 'text') {
+                  e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (selectedElement?.type !== 'text') {
+                  e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                }
+              }}
             >
               <Type className="w-4 h-4" />
               Add Text
             </button>
             <button
               onClick={() => fileInputRef.current?.click()}
-              className={`px-3 py-2 border rounded-full text-white flex items-center gap-2 transition-colors text-sm ${
-                selectedElement?.type === 'image' || !selectedElement
-                  ? 'bg-[#4DB64F] hover:bg-[#45a049] border-[#4DB64F]'
-                  : 'bg-white/5 hover:bg-white/10 border-white/20'
-              }`}
+              className="px-3 py-2 border rounded-full flex items-center gap-2 transition-colors text-sm"
+              style={{
+                backgroundColor: (selectedElement?.type === 'image' || !selectedElement) ? '#4DB64F' : 'var(--card-bg)',
+                borderColor: (selectedElement?.type === 'image' || !selectedElement) ? '#4DB64F' : 'var(--border-color)',
+                color: 'var(--text-primary)',
+              }}
+              onMouseEnter={(e) => {
+                if (selectedElement?.type !== 'image' && selectedElement) {
+                  e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (selectedElement?.type !== 'image' && selectedElement) {
+                  e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                }
+              }}
               title="Upload PNG, JPG, or GIF image"
             >
               <ImageIcon className="w-4 h-4" />
@@ -612,28 +650,60 @@ export default function LabelEditorModal({
               className="hidden"
             />
             {/* Zoom Controls */}
-            <div className="flex items-center gap-2 bg-white/5 rounded-lg px-2 py-1 border border-white/20">
+            <div 
+              className="flex items-center gap-2 rounded-lg px-2 py-1 border transition-colors"
+              style={{ 
+                backgroundColor: 'var(--card-bg)', 
+                borderColor: 'var(--border-color)' 
+              }}
+            >
               <button
                 onClick={() => setDisplayScale(Math.max(0.1, displayScale - 0.1))}
-                className="p-1 hover:bg-white/10 rounded transition-colors"
+                className="p-1 rounded transition-colors"
+                style={{ color: 'var(--text-primary)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
                 title="Zoom Out"
               >
-                <ZoomOut className="w-4 h-4 text-white" />
+                <ZoomOut className="w-4 h-4" />
               </button>
-              <span className="text-sm text-gray-300 min-w-[60px] text-center">
+              <span 
+                className="text-sm min-w-[60px] text-center transition-colors"
+                style={{ color: 'var(--text-secondary)' }}
+              >
                 {Math.round(displayScale * 100)}%
               </span>
               <button
                 onClick={() => setDisplayScale(Math.min(1, displayScale + 0.1))}
-                className="p-1 hover:bg-white/10 rounded transition-colors"
+                className="p-1 rounded transition-colors"
+                style={{ color: 'var(--text-primary)' }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'transparent';
+                }}
                 title="Zoom In"
               >
-                <ZoomIn className="w-4 h-4 text-white" />
+                <ZoomIn className="w-4 h-4" />
               </button>
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+              className="p-2 rounded-lg transition-colors"
+              style={{ color: 'var(--text-muted)' }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                e.currentTarget.style.color = 'var(--text-primary)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.color = 'var(--text-muted)';
+              }}
               title="Close (Esc)"
             >
               <X className="w-5 h-5" />
@@ -644,12 +714,16 @@ export default function LabelEditorModal({
         {/* Main Content Area - Canvas + Right Sidebar */}
         <div className="flex-1 flex overflow-hidden">
           {/* Canvas Area */}
-          <div className="flex-1 overflow-auto p-4 bg-[#2A2A2A] flex items-center justify-center">
+          <div 
+            className="flex-1 overflow-auto p-4 flex items-center justify-center transition-colors"
+            style={{ backgroundColor: 'var(--card-bg)' }}
+          >
             <div
               ref={containerRef}
-              className="bg-white/5 rounded-lg p-4 inline-block relative"
+              className="rounded-lg p-4 inline-block relative transition-colors"
               style={{
                 boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+                backgroundColor: 'var(--card-bg)',
               }}
             >
               <canvas
@@ -659,10 +733,12 @@ export default function LabelEditorModal({
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
                 onDoubleClick={handleDoubleClick}
-                className="border border-white/20 rounded cursor-default"
+                className="border rounded cursor-default transition-colors"
                 style={{
                   width: `${CANVAS_WIDTH * displayScale}px`,
                   height: `${CANVAS_HEIGHT * displayScale}px`,
+                  borderColor: 'var(--border-color)',
+                  backgroundColor: 'var(--background)',
                 }}
               />
               {/* Inline text editor overlay */}
@@ -829,24 +905,49 @@ export default function LabelEditorModal({
           </div>
 
           {/* Right Sidebar */}
-          <div className="w-80 border-l border-white/10 bg-[#1E1E1E] overflow-y-auto flex flex-col">
+          <div 
+            className="w-80 border-l overflow-y-auto flex flex-col transition-colors"
+            style={{ 
+              backgroundColor: 'var(--background)', 
+              borderColor: 'var(--border-color)' 
+            }}
+          >
             {/* Background Color Section */}
-            <div className="p-4 border-b border-white/10">
-              <label className="block text-sm font-semibold mb-3 text-white">
+            <div 
+              className="p-4 border-b transition-colors"
+              style={{ borderColor: 'var(--border-color)' }}
+            >
+              <label 
+                className="block text-sm font-semibold mb-3 transition-colors"
+                style={{ color: 'var(--text-primary)' }}
+              >
                 Background Color
               </label>
               <div className="flex items-center gap-3 mb-3">
                 <div
-                    className="w-16 h-16 rounded-lg border-2 border-white/20 cursor-pointer shadow-lg hover:scale-105 transition-transform shrink-0"
-                  style={{ backgroundColor }}
+                    className="w-16 h-16 rounded-lg border-2 cursor-pointer shadow-lg hover:scale-105 transition-transform shrink-0"
+                  style={{ 
+                    backgroundColor,
+                    borderColor: 'var(--border-color)'
+                  }}
                   onClick={() => {
                     setShowBgColorPicker(!showBgColorPicker);
                     setShowTextColorPicker(false);
                   }}
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-xs text-gray-400 mb-1">Label background</p>
-                  <p className="text-sm text-white font-mono truncate">{backgroundColor.toUpperCase()}</p>
+                  <p 
+                    className="text-xs mb-1 transition-colors"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    Label background
+                  </p>
+                  <p 
+                    className="text-sm font-mono truncate transition-colors"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    {backgroundColor.toUpperCase()}
+                  </p>
                 </div>
               </div>
               {showBgColorPicker && (
@@ -861,22 +962,58 @@ export default function LabelEditorModal({
 
             {/* Image Properties Section - Show by default when no element selected or when image is selected */}
             {(!selectedElement || selectedElement.type === 'image') && (
-              <div className="p-4 border-b border-white/10">
-                <h3 className="text-sm font-semibold mb-3 text-white">Image Properties</h3>
+              <div 
+                className="p-4 border-b transition-colors"
+                style={{ borderColor: 'var(--border-color)' }}
+              >
+                <h3 
+                  className="text-sm font-semibold mb-3 transition-colors"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  Image Properties
+                </h3>
                 <div className="space-y-3">
                   {!selectedElement && (
-                    <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                      <p className="text-xs text-gray-400 mb-2">No Image Selected</p>
-                      <p className="text-xs text-gray-300">
+                    <div 
+                      className="rounded-lg p-3 border transition-colors"
+                      style={{ 
+                        backgroundColor: 'var(--card-bg)', 
+                        borderColor: 'var(--border-color)' 
+                      }}
+                    >
+                      <p 
+                        className="text-xs mb-2 transition-colors"
+                        style={{ color: 'var(--text-muted)' }}
+                      >
+                        No Image Selected
+                      </p>
+                      <p 
+                        className="text-xs transition-colors"
+                        style={{ color: 'var(--text-secondary)' }}
+                      >
                         Click "Add Image" to upload an image, or select an existing image on the canvas to edit its properties.
                       </p>
                     </div>
                   )}
                   {selectedElement && selectedElement.type === 'image' && (
                     <>
-                      <div className="bg-white/5 rounded-lg p-3 border border-white/10">
-                        <p className="text-xs text-gray-400 mb-2">Resize Instructions</p>
-                        <p className="text-xs text-gray-300">
+                      <div 
+                        className="rounded-lg p-3 border transition-colors"
+                        style={{ 
+                          backgroundColor: 'var(--card-bg)', 
+                          borderColor: 'var(--border-color)' 
+                        }}
+                      >
+                        <p 
+                          className="text-xs mb-2 transition-colors"
+                          style={{ color: 'var(--text-muted)' }}
+                        >
+                          Resize Instructions
+                        </p>
+                        <p 
+                          className="text-xs transition-colors"
+                          style={{ color: 'var(--text-secondary)' }}
+                        >
                           Click and drag the small green circles around the image to resize. Corner handles resize proportionally, edge handles resize one dimension.
                         </p>
                       </div>
@@ -904,22 +1041,42 @@ export default function LabelEditorModal({
 
             {/* Text Color Section (for selected text element) - Moved to top for better visibility */}
             {selectedElement && selectedElement.type === 'text' && (
-              <div className="p-4 border-b border-white/10 bg-white/5">
-                <label className="block text-sm font-semibold mb-3 text-white">
+              <div 
+                className="p-4 border-b transition-colors"
+                style={{ 
+                  backgroundColor: 'var(--card-bg)', 
+                  borderColor: 'var(--border-color)' 
+                }}
+              >
+                <label 
+                  className="block text-sm font-semibold mb-3 transition-colors"
+                  style={{ color: 'var(--text-primary)' }}
+                >
                   Text Color
                 </label>
                 <div className="flex items-center gap-3 mb-3">
                   <div
-                    className="w-16 h-16 rounded-lg border-2 border-white/20 cursor-pointer shadow-lg hover:scale-105 transition-transform shrink-0"
-                    style={{ backgroundColor: selectedElement.color || '#000000' }}
+                    className="w-16 h-16 rounded-lg border-2 cursor-pointer shadow-lg hover:scale-105 transition-transform shrink-0"
+                    style={{ 
+                      backgroundColor: selectedElement.color || '#000000',
+                      borderColor: 'var(--border-color)'
+                    }}
                     onClick={() => {
                       setShowTextColorPicker(!showTextColorPicker);
                       setShowBgColorPicker(false);
                     }}
                   />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs text-gray-400 mb-1">Click to change text color</p>
-                    <p className="text-sm text-white font-mono truncate">
+                    <p 
+                      className="text-xs mb-1 transition-colors"
+                      style={{ color: 'var(--text-muted)' }}
+                    >
+                      Click to change text color
+                    </p>
+                    <p 
+                      className="text-sm font-mono truncate transition-colors"
+                      style={{ color: 'var(--text-primary)' }}
+                    >
                       {(selectedElement.color || '#000000').toUpperCase()}
                     </p>
                   </div>
@@ -939,8 +1096,14 @@ export default function LabelEditorModal({
 
             {/* Selected Element Properties */}
             {selectedElement && (
-              <div className="p-4 border-b border-white/10 space-y-4">
-                <h3 className="text-sm font-semibold text-white">
+              <div 
+                className="p-4 border-b space-y-4 transition-colors"
+                style={{ borderColor: 'var(--border-color)' }}
+              >
+                <h3 
+                  className="text-sm font-semibold transition-colors"
+                  style={{ color: 'var(--text-primary)' }}
+                >
                   {selectedElement.type === 'text' ? 'Text Properties' : 'Image Properties'}
                 </h3>
 
@@ -1004,7 +1167,18 @@ export default function LabelEditorModal({
                       </button>
                       <button
                         onClick={handleAddText}
-                        className="flex-1 px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/20 rounded-lg text-white flex items-center justify-center gap-2 transition-colors text-sm font-medium"
+                        className="flex-1 px-3 py-2 border rounded-lg flex items-center justify-center gap-2 transition-colors text-sm font-medium"
+                        style={{ 
+                          backgroundColor: 'var(--card-bg)', 
+                          borderColor: 'var(--border-color)',
+                          color: 'var(--text-primary)'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                        }}
                       >
                         <Type className="w-4 h-4" />
                         Add New Text
@@ -1012,7 +1186,10 @@ export default function LabelEditorModal({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold mb-2 text-white">
+                      <label 
+                        className="block text-sm font-semibold mb-2 transition-colors"
+                        style={{ color: 'var(--text-primary)' }}
+                      >
                         Text Content
                       </label>
                       <textarea
@@ -1101,22 +1278,23 @@ export default function LabelEditorModal({
                             // Allow normal text editing behavior - don't prevent default
                           }
                         }}
-                        className="w-full px-3 py-2 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F] text-sm"
+                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] text-sm transition-colors"
+                        style={{
+                          backgroundColor: 'var(--input-bg)',
+                          borderColor: 'var(--input-border)',
+                          color: 'var(--text-primary)',
+                        }}
                         rows={3}
                         placeholder="Enter your text here..."
-                        style={{
-                          fontFamily: selectedElement.fontFamily || 'Arial',
-                          fontSize: `${(selectedElement.fontSize || 24) * 0.6}px`,
-                          color: '#ffffff',
-                          fontWeight: selectedElement.fontWeight || 'normal',
-                          fontStyle: selectedElement.fontStyle || 'normal',
-                        }}
                       />
                     </div>
 
                     {/* Font Size - More Prominent with Live Preview */}
                     <div>
-                      <label className="block text-sm font-semibold mb-2 text-white">
+                      <label 
+                        className="block text-sm font-semibold mb-2 transition-colors"
+                        style={{ color: 'var(--text-primary)' }}
+                      >
                         Font Size: {selectedElement.fontSize || 24}px
                       </label>
                       <div className="flex items-center gap-3">
@@ -1145,7 +1323,10 @@ export default function LabelEditorModal({
 
                     {/* Font Style - More Prominent */}
                     <div>
-                      <label className="block text-sm font-semibold mb-2 text-white">
+                      <label 
+                        className="block text-sm font-semibold mb-2 transition-colors"
+                        style={{ color: 'var(--text-primary)' }}
+                      >
                         Font Style
                       </label>
                       <div className="grid grid-cols-3 gap-2">
@@ -1156,11 +1337,22 @@ export default function LabelEditorModal({
                                 selectedElement.fontWeight === 'bold' ? 'normal' : 'bold',
                             });
                           }}
-                          className={`px-3 py-2.5 rounded-lg border transition-colors text-sm font-medium ${
-                            selectedElement.fontWeight === 'bold'
-                              ? 'bg-[#4DB64F] text-white border-[#4DB64F]'
-                              : 'bg-white/5 text-white border-white/20 hover:bg-white/10'
-                          }`}
+                          className="px-3 py-2.5 rounded-lg border transition-colors text-sm font-medium"
+                          style={{
+                            backgroundColor: selectedElement.fontWeight === 'bold' ? '#4DB64F' : 'var(--card-bg)',
+                            borderColor: selectedElement.fontWeight === 'bold' ? '#4DB64F' : 'var(--border-color)',
+                            color: 'var(--text-primary)',
+                          }}
+                          onMouseEnter={(e) => {
+                            if (selectedElement.fontWeight !== 'bold') {
+                              e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (selectedElement.fontWeight !== 'bold') {
+                              e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                            }
+                          }}
                         >
                           Bold
                         </button>
@@ -1171,11 +1363,22 @@ export default function LabelEditorModal({
                                 selectedElement.fontStyle === 'italic' ? 'normal' : 'italic',
                             });
                           }}
-                          className={`px-3 py-2.5 rounded-lg border transition-colors text-sm font-medium ${
-                            selectedElement.fontStyle === 'italic'
-                              ? 'bg-[#4DB64F] text-white border-[#4DB64F]'
-                              : 'bg-white/5 text-white border-white/20 hover:bg-white/10'
-                          }`}
+                          className="px-3 py-2.5 rounded-lg border transition-colors text-sm font-medium"
+                          style={{
+                            backgroundColor: selectedElement.fontStyle === 'italic' ? '#4DB64F' : 'var(--card-bg)',
+                            borderColor: selectedElement.fontStyle === 'italic' ? '#4DB64F' : 'var(--border-color)',
+                            color: 'var(--text-primary)',
+                          }}
+                          onMouseEnter={(e) => {
+                            if (selectedElement.fontStyle !== 'italic') {
+                              e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (selectedElement.fontStyle !== 'italic') {
+                              e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                            }
+                          }}
                         >
                           Italic
                         </button>
@@ -1188,11 +1391,22 @@ export default function LabelEditorModal({
                                   : 'underline',
                             });
                           }}
-                          className={`px-3 py-2.5 rounded-lg border transition-colors text-sm font-medium ${
-                            selectedElement.textDecoration === 'underline'
-                              ? 'bg-[#4DB64F] text-white border-[#4DB64F]'
-                              : 'bg-white/5 text-white border-white/20 hover:bg-white/10'
-                          }`}
+                          className="px-3 py-2.5 rounded-lg border transition-colors text-sm font-medium"
+                          style={{
+                            backgroundColor: selectedElement.textDecoration === 'underline' ? '#4DB64F' : 'var(--card-bg)',
+                            borderColor: selectedElement.textDecoration === 'underline' ? '#4DB64F' : 'var(--border-color)',
+                            color: 'var(--text-primary)',
+                          }}
+                          onMouseEnter={(e) => {
+                            if (selectedElement.textDecoration !== 'underline') {
+                              e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                            }
+                          }}
+                          onMouseLeave={(e) => {
+                            if (selectedElement.textDecoration !== 'underline') {
+                              e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                            }
+                          }}
                         >
                           Underline
                         </button>
@@ -1201,7 +1415,10 @@ export default function LabelEditorModal({
 
                     {/* Font Family - More Prominent with Live Preview */}
                     <div>
-                      <label className="block text-sm font-semibold mb-2 text-white">
+                      <label 
+                        className="block text-sm font-semibold mb-2 transition-colors"
+                        style={{ color: 'var(--text-primary)' }}
+                      >
                         Font Family
                       </label>
                       <select
@@ -1209,10 +1426,13 @@ export default function LabelEditorModal({
                         onChange={(e) => {
                           updateElement(selectedElement.id, { fontFamily: e.target.value });
                         }}
-                        className="w-full px-3 py-2.5 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F] text-sm font-medium appearance-none cursor-pointer"
+                        className="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-[#4DB64F] text-sm font-medium appearance-none cursor-pointer transition-colors"
                         style={{ 
                           fontFamily: selectedElement.fontFamily || 'Arial',
-                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+                          backgroundColor: 'var(--input-bg)',
+                          borderColor: 'var(--input-border)',
+                          color: 'var(--text-primary)',
+                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='${theme === 'light' ? '%23111827' : '%23ffffff'}' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
                           backgroundRepeat: 'no-repeat',
                           backgroundPosition: 'right 12px center',
                           paddingRight: '36px'
@@ -1245,7 +1465,10 @@ export default function LabelEditorModal({
                     </div>
 
                     <div>
-                      <label className="block text-sm font-semibold mb-2 text-white">
+                      <label 
+                        className="block text-sm font-semibold mb-2 transition-colors"
+                        style={{ color: 'var(--text-primary)' }}
+                      >
                         Text Align
                       </label>
                       <select
@@ -1255,9 +1478,12 @@ export default function LabelEditorModal({
                             textAlign: e.target.value as 'left' | 'center' | 'right',
                           });
                         }}
-                        className="w-full px-3 py-2.5 bg-white/5 border border-white/20 rounded-lg text-white focus:outline-none focus:border-[#4DB64F] text-sm font-medium appearance-none cursor-pointer"
+                        className="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-[#4DB64F] text-sm font-medium appearance-none cursor-pointer transition-colors"
                         style={{
-                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23ffffff' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
+                          backgroundColor: 'var(--input-bg)',
+                          borderColor: 'var(--input-border)',
+                          color: 'var(--text-primary)',
+                          backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='${theme === 'light' ? '%23111827' : '%23ffffff'}' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
                           backgroundRepeat: 'no-repeat',
                           backgroundPosition: 'right 12px center',
                           paddingRight: '36px'
@@ -1289,7 +1515,12 @@ export default function LabelEditorModal({
             {/* Info when no element selected */}
             {!selectedElement && (
               <div className="p-4 text-sm text-gray-400 space-y-2">
-                <p className="font-semibold text-white mb-2">No Element Selected</p>
+                <p 
+                  className="font-semibold mb-2 transition-colors"
+                  style={{ color: 'var(--text-primary)' }}
+                >
+                  No Element Selected
+                </p>
                 <p>Click on a text or image element on the canvas to select it and edit its properties.</p>
                 <p className="text-xs text-gray-500 mt-2">
                   Tip: Click "Add Text" to create a new text element, then click on it to select.
@@ -1309,15 +1540,50 @@ export default function LabelEditorModal({
         </div>
 
         {/* Footer with Actions */}
-        <div className="p-4 border-t border-white/10 flex items-center justify-between bg-[#1E1E1E]">
-          <div className="flex items-center gap-3 text-sm text-gray-400">
-            <span className="font-medium text-white">Canvas: {CANVAS_WIDTH} × {CANVAS_HEIGHT}px</span>
-            <span className="text-white/20">•</span>
-            <span>Elements: <span className="text-white font-medium">{elements.length}</span></span>
+        <div 
+          className="p-4 border-t flex items-center justify-between transition-colors"
+          style={{ 
+            backgroundColor: 'var(--background)', 
+            borderColor: 'var(--border-color)' 
+          }}
+        >
+          <div 
+            className="flex items-center gap-3 text-sm transition-colors"
+            style={{ color: 'var(--text-muted)' }}
+          >
+            <span 
+              className="font-medium transition-colors"
+              style={{ color: 'var(--text-primary)' }}
+            >
+              Canvas: {CANVAS_WIDTH} × {CANVAS_HEIGHT}px
+            </span>
+            <span 
+              className="transition-colors"
+              style={{ color: 'var(--border-color)' }}
+            >
+              •
+            </span>
+            <span>
+              Elements: <span 
+                className="font-medium transition-colors"
+                style={{ color: 'var(--text-primary)' }}
+              >
+                {elements.length}
+              </span>
+            </span>
             {selectedElement && (
               <>
-                <span className="text-white/20">•</span>
-                <span className="text-[#4DB64F] font-medium">Selected: {selectedElement.type}</span>
+                <span 
+                  className="transition-colors"
+                  style={{ color: 'var(--border-color)' }}
+                >
+                  •
+                </span>
+                <span 
+                  className="text-[#4DB64F] font-medium transition-colors"
+                >
+                  Selected: {selectedElement.type}
+                </span>
               </>
             )}
           </div>
@@ -1325,7 +1591,22 @@ export default function LabelEditorModal({
             <button
               onClick={undo}
               disabled={!canUndo()}
-              className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+              className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+              style={{ 
+                backgroundColor: 'var(--card-bg)', 
+                borderColor: 'var(--border-color)',
+                color: 'var(--text-primary)'
+              }}
+              onMouseEnter={(e) => {
+                if (!e.currentTarget.disabled) {
+                  e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!e.currentTarget.disabled) {
+                  e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                }
+              }}
               title="Undo (Ctrl+Z)"
             >
               Undo
@@ -1333,7 +1614,22 @@ export default function LabelEditorModal({
             <button
               onClick={redo}
               disabled={!canRedo()}
-              className="px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/20 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+              className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
+              style={{ 
+                backgroundColor: 'var(--card-bg)', 
+                borderColor: 'var(--border-color)',
+                color: 'var(--text-primary)'
+              }}
+              onMouseEnter={(e) => {
+                if (!e.currentTarget.disabled) {
+                  e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (!e.currentTarget.disabled) {
+                  e.currentTarget.style.backgroundColor = 'var(--card-bg)';
+                }
+              }}
               title="Redo (Ctrl+Y)"
             >
               Redo

@@ -4,10 +4,10 @@ const morgan = require('morgan');
 const connectDB = require('./config/db');
 
 // Import routes
-const userRoutes = require('./routes/User.route');
 const designRoutes = require('./routes/design.route');
 const orderRoutes = require('./routes/order.route');
 const adminRoutes = require('./routes/admin.route');
+const authRoutes = require('./routes/auth.route');
 
 const app = express();
 
@@ -21,7 +21,7 @@ app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 // const { checkDBConnection } = require('./middleware/db.middleware');
 
 // Routes
-app.use('/api/users', userRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/designs', designRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);

@@ -1,11 +1,6 @@
 const mongoose = require('mongoose');
 
 const designSchema = new mongoose.Schema({
-  user_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
   design_json: {
     type: Object,
     required: true
