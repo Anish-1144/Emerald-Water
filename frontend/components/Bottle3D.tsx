@@ -193,23 +193,61 @@ function BottleModelWithCenter({ capColor, labelTexture, onCenterChange }: Bottl
       loader.load(
         labelTexture,
         (texture) => {
+          // Label UV mapping area dimensions (from canvas size)
+          const LABEL_UV_WIDTH = 2081;
+          const LABEL_UV_HEIGHT = 544;
+          const LABEL_UV_ASPECT = LABEL_UV_WIDTH / LABEL_UV_HEIGHT; // ≈ 3.827
+          
+          // Get image dimensions
+          const imageWidth = texture.image.width;
+          const imageHeight = texture.image.height;
+          const imageAspect = imageWidth / imageHeight;
+          
           // Try different flipY - GLB models often need false, but some need true
           texture.flipY = false;
           // Use ClampToEdgeWrapping to prevent texture bleeding
           texture.wrapS = THREE.ClampToEdgeWrapping;
           texture.wrapT = THREE.ClampToEdgeWrapping;
-          // Zoom out the texture by using repeat < 1 and centering with offset
-          // Using 0.85 repeat to zoom out ~15% and center it
-          const zoomOutFactor = 0.85;
-          texture.repeat.set(zoomOutFactor, zoomOutFactor);
-          // Center the texture by offsetting by half of the unused space
-          const offsetAmount = (1 - zoomOutFactor) / 2;
-          texture.offset.set(offsetAmount, offsetAmount);
+          
+          // Calculate repeat and offset to fit image to UV mapping
+          // We want to cover the entire UV area while maintaining aspect ratio
+          let repeatX: number;
+          let repeatY: number;
+          let offsetX: number;
+          let offsetY: number;
+          
+          if (imageAspect > LABEL_UV_ASPECT) {
+            // Image is wider than UV area - scale to fit height, crop width
+            // Scale factor based on height
+            repeatY = 1.0; // Full height
+            repeatX = imageAspect / LABEL_UV_ASPECT; // Scale width proportionally
+            offsetX = (1 - repeatX) / 2; // Center horizontally
+            offsetY = 0; // No vertical offset
+          } else {
+            // Image is taller than UV area - scale to fit width, crop height
+            // Scale factor based on width
+            repeatX = 1.0; // Full width
+            repeatY = LABEL_UV_ASPECT / imageAspect; // Scale height proportionally
+            offsetX = 0; // No horizontal offset
+            offsetY = (1 - repeatY) / 2; // Center vertically
+          }
+          
+          texture.repeat.set(repeatX, repeatY);
+          texture.offset.set(offsetX, offsetY);
+          
           // Use high-quality filtering for crisp images
           texture.minFilter = THREE.LinearMipmapLinearFilter;
           texture.magFilter = THREE.LinearFilter;
           texture.generateMipmaps = true;
           texture.anisotropy = 16; // Maximum anisotropy for sharp textures
+          
+          console.log('Texture mapping applied:', {
+            imageSize: `${imageWidth}x${imageHeight}`,
+            imageAspect: imageAspect.toFixed(2),
+            uvAspect: LABEL_UV_ASPECT.toFixed(2),
+            repeat: `${repeatX.toFixed(3)}, ${repeatY.toFixed(3)}`,
+            offset: `${offsetX.toFixed(3)}, ${offsetY.toFixed(3)}`
+          });
           
           if (labelRef.current) {
             const geometry = labelRef.current.geometry;
