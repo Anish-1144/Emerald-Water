@@ -4,6 +4,12 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/lib/store';
 import { orderAPI } from '@/lib/api';
+import { 
+  calculateOrderPrice, 
+  SHIPPING_OPTIONS,
+  SETUP_FEE,
+  type ShippingMethod 
+} from '@/lib/pricing';
 
 export default function CheckoutPage() {
   const router = useRouter();
@@ -19,6 +25,7 @@ export default function CheckoutPage() {
     country: '',
     city: '',
   });
+  const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('pickup');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -57,7 +64,16 @@ export default function CheckoutPage() {
     }
   };
 
-  const total = items.reduce((sum, item) => sum + item.price, 0);
+  // Calculate total pricing with shipping and setup fee
+  const isFirstOrder = true; // TODO: Check if this is user's first order
+  const subtotal = items.reduce((sum, item) => sum + item.price, 0);
+  const setupFee = isFirstOrder ? SETUP_FEE : 0;
+  const shippingPrice = shippingMethod === 'local_delivery' 
+    ? SHIPPING_OPTIONS.LOCAL_DELIVERY.price 
+    : shippingMethod === 'shipping' 
+    ? 0 // Quote required
+    : 0; // Pickup is free
+  const total = subtotal + setupFee + shippingPrice;
 
   if (items.length === 0) return null;
 
@@ -322,6 +338,38 @@ export default function CheckoutPage() {
                 />
               </div>
 
+              <div>
+                <label 
+                  className="block text-sm font-medium mb-1 transition-colors"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  Shipping Method *
+                </label>
+                <select
+                  required
+                  value={shippingMethod}
+                  onChange={(e) => setShippingMethod(e.target.value as ShippingMethod)}
+                  className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-colors"
+                  style={{ 
+                    backgroundColor: 'var(--input-bg)', 
+                    borderColor: 'var(--input-border)',
+                    color: 'var(--text-primary)'
+                  }}
+                >
+                  <option value="pickup">{SHIPPING_OPTIONS.PICKUP.name}</option>
+                  <option value="local_delivery">{SHIPPING_OPTIONS.LOCAL_DELIVERY.name} - ${SHIPPING_OPTIONS.LOCAL_DELIVERY.price}</option>
+                  <option value="shipping">{SHIPPING_OPTIONS.SHIPPING.name}</option>
+                </select>
+                {shippingMethod === 'shipping' && (
+                  <p 
+                    className="text-xs mt-1 transition-colors"
+                    style={{ color: 'var(--text-muted)' }}
+                  >
+                    Please contact us for shipping quotes outside Regina
+                  </p>
+                )}
+              </div>
+
               <div 
                 className="border rounded-lg p-4 mt-6 transition-colors"
                 style={{ 
@@ -360,21 +408,90 @@ export default function CheckoutPage() {
                 Order Summary
               </h2>
               <div className="space-y-3 mb-4">
-                {items.map((item) => (
+                {items.map((item) => {
+                  const cases = Math.ceil(item.quantity / 30);
+                  return (
+                    <div key={item.design_id} className="space-y-2">
+                      <div 
+                        className="flex justify-between text-sm transition-colors"
+                        style={{ color: 'var(--text-secondary)' }}
+                      >
+                        <span>500ml Bottles x{item.quantity}</span>
+                        <span 
+                          className="font-medium transition-colors"
+                          style={{ color: 'var(--text-primary)' }}
+                        >
+                          ${item.price.toFixed(2)}
+                        </span>
+                      </div>
+                      {item.capColor && item.capColor !== 'white' && (
+                        <div 
+                          className="flex justify-between text-xs ml-4 transition-colors"
+                          style={{ color: 'var(--text-muted)' }}
+                        >
+                          <span>Cap Color ({item.capColor})</span>
+                          <span>Included</span>
+                        </div>
+                      )}
+                      {item.shrinkWrap && (
+                        <div 
+                          className="flex justify-between text-xs ml-4 transition-colors"
+                          style={{ color: 'var(--text-muted)' }}
+                        >
+                          <span>Shrink Wrap ({cases} cases)</span>
+                          <span>Included</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+                
+                {isFirstOrder && (
                   <div 
-                    key={item.design_id} 
-                    className="flex justify-between text-sm transition-colors"
-                    style={{ color: 'var(--text-secondary)' }}
+                    className="flex justify-between text-sm transition-colors pt-2 border-t"
+                    style={{ 
+                      color: 'var(--text-secondary)',
+                      borderColor: 'var(--border-color)'
+                    }}
                   >
-                    <span>Custom Bottle x{item.quantity}</span>
+                    <span>Setup Fee (One-time)</span>
                     <span 
                       className="font-medium transition-colors"
                       style={{ color: 'var(--text-primary)' }}
                     >
-                      ${item.price.toFixed(2)}
+                      ${SETUP_FEE.toFixed(2)}
                     </span>
                   </div>
-                ))}
+                )}
+                
+                <div 
+                  className="flex justify-between text-sm transition-colors"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  <span>Subtotal</span>
+                  <span 
+                    className="font-medium transition-colors"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    ${(subtotal + setupFee).toFixed(2)}
+                  </span>
+                </div>
+                
+                <div 
+                  className="flex justify-between text-sm transition-colors"
+                  style={{ color: 'var(--text-secondary)' }}
+                >
+                  <span>Shipping</span>
+                  <span 
+                    className="font-medium transition-colors"
+                    style={{ color: 'var(--text-primary)' }}
+                  >
+                    {shippingMethod === 'shipping' 
+                      ? 'Quote Required' 
+                      : `$${shippingPrice.toFixed(2)}`}
+                  </span>
+                </div>
+                
                 <div 
                   className="border-t pt-3 flex justify-between text-lg font-semibold transition-colors"
                   style={{ 
@@ -383,8 +500,19 @@ export default function CheckoutPage() {
                   }}
                 >
                   <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>
+                    {shippingMethod === 'shipping' 
+                      ? 'Quote Required' 
+                      : `$${total.toFixed(2)}`}
+                  </span>
                 </div>
+                
+                <p 
+                  className="text-xs mt-2 transition-colors"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  * Pricing subject to tax. Deposit and Enviro included.
+                </p>
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, startTransition } from 'react';
 import {
   useLabelEditorStore,
   drawElementOnCanvas,
@@ -13,6 +13,12 @@ import {
   Image as ImageIcon,
   Edit3,
 } from 'lucide-react';
+import { 
+  hexToCapColor, 
+  getCapColorPrice, 
+  getCapColorOptions,
+  type CapColor 
+} from '@/lib/pricing';
 
 interface LabelDesignPanelProps {
   capColor: string;
@@ -58,6 +64,14 @@ export default function LabelDesignPanel({
   } = useLabelEditorStore();
 
   const selectedElement = elements.find((el) => el.selected);
+
+  // Handle cap color change with proper callback to avoid render conflicts
+  const handleCapColorChange = useCallback((color: string) => {
+    // Use startTransition to defer state update and avoid render conflicts
+    startTransition(() => {
+      setCapColor(color);
+    });
+  }, [setCapColor]);
 
   // Render preview canvas
   useEffect(() => {
@@ -294,14 +308,88 @@ export default function LabelDesignPanel({
             >
               {capColor.toUpperCase()}
             </p>
+            {(() => {
+              const capColorType = hexToCapColor(capColor);
+              const price = getCapColorPrice(capColorType);
+              const capColorOptions = getCapColorOptions();
+              const selectedOption = capColorOptions.find(opt => opt.value === capColorType);
+              
+              return (
+                <p 
+                  className="text-xs mt-1 transition-colors font-medium"
+                  style={{ 
+                    color: price > 0 ? '#4DB64F' : 'var(--text-muted)'
+                  }}
+                >
+                  {price === 0 
+                    ? 'Free (White caps included)' 
+                    : `+$${price.toFixed(2)} per bottle`}
+                </p>
+              );
+            })()}
           </div>
         </div>
         {showColorPicker === 'cap' && (
           <div className="mt-4">
             <FigmaColorPicker
               color={capColor}
-              onChange={(color) => setCapColor(color)}
+              onChange={handleCapColorChange}
             />
+            {/* Show pricing information */}
+            <div 
+              className="mt-4 p-3 rounded-lg border transition-colors"
+              style={{ 
+                backgroundColor: 'var(--card-bg)',
+                borderColor: 'var(--border-color)'
+              }}
+            >
+              <p 
+                className="text-xs font-semibold mb-2 transition-colors"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Cap Color Pricing:
+              </p>
+              <div className="space-y-1">
+                {getCapColorOptions().map((option) => {
+                  const isSelected = hexToCapColor(capColor) === option.value;
+                  return (
+                    <div 
+                      key={option.value}
+                      className={`flex justify-between text-xs p-2 rounded transition-colors ${
+                        isSelected ? 'bg-[#4DB64F]/20' : ''
+                      }`}
+                      style={{ 
+                        color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)'
+                      }}
+                    >
+                      <span className="capitalize">{option.label}</span>
+                      <span 
+                        className="font-medium"
+                        style={{ 
+                          color: option.price > 0 ? '#4DB64F' : 'var(--text-muted)'
+                        }}
+                      >
+                        {option.price === 0 ? 'Free' : `+$${option.price.toFixed(2)}/bottle`}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p 
+                className="text-xs mt-3 pt-2 border-t transition-colors"
+                style={{ 
+                  color: 'var(--text-muted)',
+                  borderColor: 'var(--border-color)'
+                }}
+              >
+                Current selection: {hexToCapColor(capColor).charAt(0).toUpperCase() + hexToCapColor(capColor).slice(1)} 
+                {getCapColorPrice(hexToCapColor(capColor)) > 0 && (
+                  <span className="text-[#4DB64F] font-medium">
+                    {' '}(+${getCapColorPrice(hexToCapColor(capColor)).toFixed(2)}/bottle)
+                  </span>
+                )}
+              </p>
+            </div>
           </div>
         )}
       </div>

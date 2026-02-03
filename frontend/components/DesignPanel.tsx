@@ -7,6 +7,7 @@ import { useAuthStore, useCartStore } from '@/lib/store';
 import { orderAPI } from '@/lib/api';
 import { useRouter } from 'next/navigation';
 import LabelDesignPanel from '@/components/LabelDesignPanel';
+import { calculateOrderPrice, MINIMUM_BOTTLES, type CapColor } from '@/lib/pricing';
 
 interface DesignPanelProps {
   activeTab: string | null;
@@ -73,17 +74,22 @@ export default function DesignPanel({
   const [orderLoading, setOrderLoading] = useState(false);
   const [orderError, setOrderError] = useState('');
 
-  // Calculate price function
-  const calculatePrice = (quantity: number): number => {
-    if (quantity >= 1000) return quantity * 1;
-    if (quantity >= 500) return quantity * 1.5;
-    return quantity * 2;
+  // Calculate price function - using new pricing utility
+  const calculatePrice = (quantity: number, capColor: CapColor = 'white', shrinkWrap: boolean = false): number => {
+    const pricing = calculateOrderPrice({
+      quantity,
+      capColor,
+      shrinkWrap,
+      shippingMethod: 'pickup',
+      hasSetupFee: false, // Setup fee only on first order
+    });
+    return pricing.subtotal;
   };
 
   // Handle quantity change
   const handleQuantityChange = (designId: string, quantity: number) => {
-    if (quantity < 100) {
-      alert('Minimum quantity is 100');
+    if (quantity < MINIMUM_BOTTLES) {
+      alert(`Minimum quantity is ${MINIMUM_BOTTLES} bottles (10 cases)`);
       return;
     }
     const item = items.find(i => i.design_id === designId);

@@ -135,8 +135,14 @@ export default function LandingPage() {
                 className="text-4xl md:text-5xl font-bold mb-4 transition-colors"
                 style={{ color: 'var(--text-primary)' }}
               >
-                Emerald Water Bottle
+                Custom Labeled 500ml Bottles
           </h1>
+              <p 
+                className="text-lg mb-4 transition-colors"
+                style={{ color: 'var(--text-secondary)' }}
+              >
+                Re-filtered and re-mineralized PH Emerald Water
+              </p>
               
               {/* Rating */}
               <div className="flex items-center gap-2 mb-6">
@@ -244,17 +250,23 @@ export default function LandingPage() {
                 className="text-3xl md:text-4xl font-bold mb-2 transition-colors"
                 style={{ color: 'var(--text-primary)' }}
               >
-                $20.50
+                Starting at $1.05/bottle
               </div>
               <div 
                 className="text-sm transition-colors"
                 style={{ color: 'var(--text-muted)' }}
               >
-                Print included
+                Minimum order: 10 cases (300 bottles)
+              </div>
+              <div 
+                className="text-xs mt-2 transition-colors"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                Packaged in cases of 30 • One-time setup fee: $150
               </div>
             </div>
 
-            {/* Estimated Delivery */}
+            {/* Shipping Options */}
             <div 
               className="p-5 rounded-lg transition-all shadow-md"
               style={{ 
@@ -262,52 +274,78 @@ export default function LandingPage() {
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)'
               }}
             >
-              <div className="flex items-center gap-2 mb-2">
+              <div className="flex items-center gap-2 mb-3">
                 <Truck className="w-5 h-5" style={{ color: 'var(--text-muted)' }} />
                 <span 
                   className="text-sm font-medium transition-colors"
                   style={{ color: 'var(--text-secondary)' }}
                 >
-                  Estimated delivery to India
+                  Shipping & Delivery
                 </span>
-                <span className="text-2xl">🇮🇳</span>
+              </div>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span style={{ color: 'var(--text-secondary)' }}>Pick-up</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>Free</span>
+                </div>
+                <div className="flex justify-between">
+                  <span style={{ color: 'var(--text-secondary)' }}>Local Scheduled Delivery</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>$50</span>
+                </div>
+                <div className="flex justify-between">
+                  <span style={{ color: 'var(--text-secondary)' }}>Shipping (Outside Regina)</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>Quote Required</span>
+                </div>
               </div>
               <div 
-                className="text-sm font-semibold mb-1 transition-colors"
-                style={{ color: 'var(--text-primary)' }}
+                className="text-xs mt-3 pt-3 border-t transition-colors"
+                style={{ 
+                  color: 'var(--text-muted)',
+                  borderColor: 'var(--border-color)'
+                }}
               >
-                Feb 11-14
-              </div>
-              <div 
-                className="text-xs transition-colors"
-                style={{ color: 'var(--text-muted)' }}
-              >
-                Shipping starts at $15.99
+                Poly Shrink Wrap: $1.99 per case of 30
               </div>
             </div>
 
-            {/* Bulk Price Calculator */}
+            {/* Pricing Tiers */}
             <div className="py-2">
               <label 
                 className="block text-sm font-medium mb-3 transition-colors"
                 style={{ color: 'var(--text-secondary)' }}
               >
-                Bulk price calculator
+                Pricing Tiers
               </label>
-              <select
-                className="w-full px-4 py-3 border rounded-lg transition-all shadow-sm"
+              <div 
+                className="space-y-2 p-4 rounded-lg transition-colors"
                 style={{ 
-                  backgroundColor: 'var(--input-bg)', 
-                  borderColor: 'var(--input-border)',
-                  color: 'var(--text-primary)',
-                  boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
+                  backgroundColor: 'var(--card-bg)',
+                  borderColor: 'var(--border-color)'
                 }}
               >
-                <option>Select quantity</option>
-                <option>100+ bottles</option>
-                <option>500+ bottles</option>
-                <option>1000+ bottles</option>
-              </select>
+                <div className="flex justify-between text-sm">
+                  <span style={{ color: 'var(--text-secondary)' }}>300 - 570 bottles</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>$1.05 each</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span style={{ color: 'var(--text-secondary)' }}>600 - 870 bottles</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>$0.96 each</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span style={{ color: 'var(--text-secondary)' }}>900 - 1,470 bottles</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>$0.94 each</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span style={{ color: 'var(--text-secondary)' }}>Pallet (1,500+)</span>
+                  <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>$0.90 each</span>
+                </div>
+              </div>
+              <p 
+                className="text-xs mt-2 transition-colors"
+                style={{ color: 'var(--text-muted)' }}
+              >
+                White caps included. Black caps +$0.05, Blue/Other +$0.08 per bottle
+              </p>
             </div>
 
             {/* Start Designing Button */}
@@ -353,12 +391,23 @@ export default function LandingPage() {
             </div>
 
             {/* Disclaimer */}
-            <p 
-              className="text-xs transition-colors mt-4 pt-4"
+            <div 
+              className="text-xs transition-colors mt-4 pt-4 space-y-1"
               style={{ color: 'var(--text-muted)' }}
             >
-              * Price varies depending on the production technique, print placement, product color and size, taxes, and shipping. See detailed info
-            </p>
+              <p>
+                * Pricing subject to tax. Deposit and Enviro included.
+              </p>
+              <p>
+                * Every bottle is filled with our re-filtered and re-mineralized PH Emerald Water.
+              </p>
+              <p>
+                * All customization, preparation and packaging done in-house.
+              </p>
+              <p className="mt-2">
+                Visit <a href="https://www.emeraldwater.ca" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#4DB64F]">emeraldwater.ca</a> for examples of previous custom labeled projects.
+              </p>
+            </div>
           </div>
         </div>
       </div>

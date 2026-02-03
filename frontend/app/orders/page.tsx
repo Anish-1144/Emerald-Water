@@ -400,7 +400,7 @@ export default function OrdersPage() {
                   return (
                     <div 
                       key={order._id} 
-                      className="border rounded-xl shadow-sm p-5 transition-all duration-200 hover:shadow-lg"
+                      className="border rounded-xl shadow-sm transition-all duration-200 hover:shadow-lg overflow-hidden"
                       style={{ 
                         backgroundColor: 'var(--card-bg)', 
                         borderColor: 'var(--border-color)',
@@ -413,138 +413,168 @@ export default function OrdersPage() {
                         e.currentTarget.style.borderColor = 'var(--border-color)';
                       }}
                     >
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 
-                              className="text-lg font-semibold transition-colors"
-                              style={{ color: 'var(--text-primary)' }}
+                      <div className="flex flex-col md:flex-row">
+                        {/* Left Side - Image */}
+                        <div 
+                          className="w-full md:w-80 lg:w-96 h-64 md:h-auto shrink-0 border-r transition-colors"
+                          style={{ 
+                            borderColor: 'var(--border-color)',
+                            backgroundColor: 'var(--input-bg)'
+                          }}
+                        >
+                          {order.bottle_snapshot || order.label_image ? (
+                            <img
+                              src={order.bottle_snapshot || order.label_image}
+                              alt="Order preview"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center">
+                              <p 
+                                className="text-sm transition-colors"
+                                style={{ color: 'var(--text-muted)' }}
+                              >
+                                Image Label
+                              </p>
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Right Side - Order Information */}
+                        <div className="flex-1 p-5 flex flex-col">
+                          {/* Order Header */}
+                          <div className="mb-4">
+                            <div className="flex items-center gap-3 mb-2 flex-wrap">
+                              <h3 
+                                className="text-lg font-semibold transition-colors"
+                                style={{ color: 'var(--text-primary)' }}
+                              >
+                                Order #{order.order_id}
+                              </h3>
+                              <span
+                                className="px-3 py-1 rounded-full text-xs font-medium"
+                                style={{ 
+                                  backgroundColor: statusColor.bg,
+                                  color: statusColor.text
+                                }}
+                              >
+                                {order.order_status.replace('_', ' ').toUpperCase()}
+                              </span>
+                            </div>
+                            <p 
+                              className="text-sm transition-colors"
+                              style={{ color: 'var(--text-muted)' }}
                             >
-                              Order #{order.order_id}
-                            </h3>
-                            <span
-                              className="px-3 py-1 rounded-full text-xs font-medium"
+                              Placed on {new Date(order.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+
+                          {/* Order Details Row */}
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                            <div>
+                              <p 
+                                className="text-xs font-medium mb-1 transition-colors"
+                                style={{ color: 'var(--text-muted)' }}
+                              >
+                                Quantity
+                              </p>
+                              <p 
+                                className="font-semibold transition-colors"
+                                style={{ color: 'var(--text-primary)' }}
+                              >
+                                {order.quantity} bottles
+                              </p>
+                            </div>
+                            <div>
+                              <p 
+                                className="text-xs font-medium mb-1 transition-colors"
+                                style={{ color: 'var(--text-muted)' }}
+                              >
+                                Payment Status
+                              </p>
+                              <p 
+                                className="font-semibold capitalize transition-colors"
+                                style={{ color: 'var(--text-primary)' }}
+                              >
+                                {order.payment_status}
+                              </p>
+                            </div>
+                            <div>
+                              <p 
+                                className="text-xs font-medium mb-1 transition-colors"
+                                style={{ color: 'var(--text-muted)' }}
+                              >
+                                Shipping Address
+                              </p>
+                              <p 
+                                className="font-semibold text-sm transition-colors"
+                                style={{ color: 'var(--text-primary)' }}
+                              >
+                                {order.shipping_address?.city || order.shipping_address?.full_name || 'N/A'}, {order.shipping_address?.country || 'N/A'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Contact Information */}
+                          {order.shipping_address && (
+                            <div className="mb-4">
+                              <p 
+                                className="text-xs font-medium mb-2 transition-colors"
+                                style={{ color: 'var(--text-muted)' }}
+                              >
+                                Contact Information
+                              </p>
+                              <div className="space-y-1 text-sm">
+                                {order.shipping_address.email && (
+                                  <p 
+                                    className="transition-colors"
+                                    style={{ color: 'var(--text-primary)' }}
+                                  >
+                                    <span style={{ color: 'var(--text-muted)' }}>Email:</span> {order.shipping_address.email}
+                                  </p>
+                                )}
+                                {order.shipping_address.phone && (
+                                  <p 
+                                    className="transition-colors"
+                                    style={{ color: 'var(--text-primary)' }}
+                                  >
+                                    <span style={{ color: 'var(--text-muted)' }}>Phone:</span> {order.shipping_address.phone}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Bottom Section - Price and Actions */}
+                          <div className="mt-auto pt-4 border-t flex items-center justify-between" style={{ borderColor: 'var(--border-color)' }}>
+                            <button
+                              onClick={() => router.push(`/orders/repeat/${order._id}`)}
+                              className="px-4 py-2 bg-[#4DB64F] hover:bg-[#45a049] text-white rounded-lg font-medium transition-colors flex items-center gap-2 text-sm"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                              </svg>
+                              Repeat Order
+                            </button>
+                            <button
+                              className="px-4 py-2 border rounded-lg font-medium transition-colors text-sm"
                               style={{ 
-                                backgroundColor: statusColor.bg,
-                                color: statusColor.text
+                                backgroundColor: 'var(--card-bg)', 
+                                borderColor: '#3b82f6',
+                                color: '#3b82f6'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.backgroundColor = 'var(--card-bg)';
                               }}
                             >
-                              {order.order_status.replace('_', ' ').toUpperCase()}
-                            </span>
-                          </div>
-                          <p 
-                            className="text-sm transition-colors"
-                            style={{ color: 'var(--text-muted)' }}
-                          >
-                            Placed on {new Date(order.createdAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p 
-                            className="text-xl font-bold transition-colors"
-                            style={{ color: '#4DB64F' }}
-                          >
-                            ${order.total_price.toFixed(2)}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                        <div 
-                          className="p-3 rounded-lg transition-colors"
-                          style={{ backgroundColor: 'var(--input-bg)' }}
-                        >
-                          <p 
-                            className="text-xs font-medium mb-1 transition-colors"
-                            style={{ color: 'var(--text-muted)' }}
-                          >
-                            Quantity
-                          </p>
-                          <p 
-                            className="font-semibold transition-colors"
-                            style={{ color: 'var(--text-primary)' }}
-                          >
-                            {order.quantity} bottles
-                          </p>
-                        </div>
-                        <div 
-                          className="p-3 rounded-lg transition-colors"
-                          style={{ backgroundColor: 'var(--input-bg)' }}
-                        >
-                          <p 
-                            className="text-xs font-medium mb-1 transition-colors"
-                            style={{ color: 'var(--text-muted)' }}
-                          >
-                            Payment Status
-                          </p>
-                          <p 
-                            className="font-semibold capitalize transition-colors"
-                            style={{ color: 'var(--text-primary)' }}
-                          >
-                            {order.payment_status}
-                          </p>
-                        </div>
-                        <div 
-                          className="p-3 rounded-lg transition-colors"
-                          style={{ backgroundColor: 'var(--input-bg)' }}
-                        >
-                          <p 
-                            className="text-xs font-medium mb-1 transition-colors"
-                            style={{ color: 'var(--text-muted)' }}
-                          >
-                            Shipping Address
-                          </p>
-                          <p 
-                            className="font-semibold text-sm transition-colors"
-                            style={{ color: 'var(--text-primary)' }}
-                          >
-                            {order.shipping_address?.city}, {order.shipping_address?.country}
-                          </p>
-                        </div>
-                      </div>
-
-                      {order.shipping_address && (
-                        <div 
-                          className="border-t pt-4 transition-colors"
-                          style={{ borderColor: 'var(--border-color)' }}
-                        >
-                          <p 
-                            className="text-xs font-medium mb-3 transition-colors"
-                            style={{ color: 'var(--text-muted)' }}
-                          >
-                            Contact Information
-                          </p>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                            {order.shipping_address.email && (
-                              <p 
-                                className="transition-colors"
-                                style={{ color: 'var(--text-primary)' }}
-                              >
-                                <span style={{ color: 'var(--text-muted)' }}>Email:</span> {order.shipping_address.email}
-                              </p>
-                            )}
-                            {order.shipping_address.phone && (
-                              <p 
-                                className="transition-colors"
-                                style={{ color: 'var(--text-primary)' }}
-                              >
-                                <span style={{ color: 'var(--text-muted)' }}>Phone:</span> {order.shipping_address.phone}
-                              </p>
-                            )}
+                              ${order.total_price.toFixed(2)}
+                            </button>
                           </div>
                         </div>
-                      )}
-
-                      {order.bottle_snapshot && (
-                        <div className="mt-4">
-                          <img
-                            src={order.bottle_snapshot}
-                            alt="Bottle preview"
-                            className="w-24 h-24 object-cover rounded-lg border transition-colors"
-                            style={{ borderColor: 'var(--border-color)' }}
-                          />
-                        </div>
-                      )}
+                      </div>
                     </div>
                   );
                 })}

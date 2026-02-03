@@ -12,6 +12,7 @@ import Sidebar from '@/components/Sidebar';
 import Footer from '@/components/Footer';
 import DesignPanel from '@/components/DesignPanel';
 import ImageCropModal from '@/components/ui/ImageCropModal';
+import { calculateOrderPrice, MINIMUM_BOTTLES, hexToCapColor, type CapColor } from '@/lib/pricing';
 
 export default function DesignPage() {
   const router = useRouter();
@@ -284,12 +285,6 @@ export default function DesignPage() {
     }
   };
 
-  const calculatePrice = (quantity: number): number => {
-    // Base price calculation: $2 per bottle for 100+, $1.5 for 500+, $1 for 1000+
-    if (quantity >= 1000) return quantity * 1;
-    if (quantity >= 500) return quantity * 1.5;
-    return quantity * 2;
-  };
 
   // Reset design state to default (fresh/newly)
   const resetDesignState = () => {
@@ -343,12 +338,27 @@ export default function DesignPage() {
       }
       
       if (designToAdd && designToAdd._id) {
+        // Get cap color from design store and convert to CapColor type
+        const capColorHex = capColor || '#ffffff';
+        const capColorType: CapColor = hexToCapColor(capColorHex);
+        
+        // Calculate price with new pricing system
+        const pricing = calculateOrderPrice({
+          quantity: MINIMUM_BOTTLES,
+          capColor: capColorType,
+          shrinkWrap: false,
+          shippingMethod: 'pickup',
+          hasSetupFee: true, // First order includes setup fee
+        });
+        
         // Add to cart with the design (will be saved to localStorage automatically)
         addToCart({
           design_id: designToAdd._id,
           design: designToAdd,
-          quantity: 100,
-          price: calculatePrice(100),
+          quantity: MINIMUM_BOTTLES,
+          price: pricing.subtotal,
+          capColor: capColorType,
+          shrinkWrap: false,
         });
         
         // Reset 3D model to default (fresh/newly)

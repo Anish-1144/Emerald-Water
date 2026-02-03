@@ -4,6 +4,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore, useCartStore, useDesignStore } from '@/lib/store';
 import { designAPI } from '@/lib/api';
+import { 
+  MINIMUM_BOTTLES, 
+  calculateOrderPrice, 
+  getCapColorOptions,
+  type CapColor,
+  type ShippingMethod 
+} from '@/lib/pricing';
 
 export default function CartPage() {
   const router = useRouter();
@@ -22,11 +29,20 @@ export default function CartPage() {
     if (!user) {
       // If not logged in, just use current design if available
       if (currentDesign && !items.find(i => i.design_id === currentDesign._id)) {
+        const pricing = calculateOrderPrice({
+          quantity: MINIMUM_BOTTLES,
+          capColor: 'white',
+          shrinkWrap: false,
+          shippingMethod: 'pickup',
+          hasSetupFee: true, // First order includes setup fee
+        });
         addToCart({
           design_id: currentDesign._id!,
           design: currentDesign,
-          quantity: 100,
-          price: calculatePrice(100),
+          quantity: MINIMUM_BOTTLES,
+          price: pricing.subtotal,
+          capColor: 'white',
+          shrinkWrap: false,
         });
       }
       return;
@@ -38,11 +54,20 @@ export default function CartPage() {
       
       // If there's a current design and it's not in cart, add it
       if (currentDesign && !items.find(i => i.design_id === currentDesign._id)) {
+        const pricing = calculateOrderPrice({
+          quantity: MINIMUM_BOTTLES,
+          capColor: 'white',
+          shrinkWrap: false,
+          shippingMethod: 'pickup',
+          hasSetupFee: true, // First order includes setup fee
+        });
         addToCart({
           design_id: currentDesign._id!,
           design: currentDesign,
-          quantity: 100,
-          price: calculatePrice(100),
+          quantity: MINIMUM_BOTTLES,
+          price: pricing.subtotal,
+          capColor: 'white',
+          shrinkWrap: false,
         });
       }
     } catch (error) {
@@ -50,25 +75,63 @@ export default function CartPage() {
     }
   };
 
-  const calculatePrice = (quantity: number): number => {
-    // Base price calculation: $2 per bottle for 100+, $1.5 for 500+, $1 for 1000+
-    if (quantity >= 1000) return quantity * 1;
-    if (quantity >= 500) return quantity * 1.5;
-    return quantity * 2;
-  };
-
   const handleQuantityChange = (designId: string, quantity: number) => {
-    if (quantity < 100) {
-      alert('Minimum quantity is 100');
+    if (quantity < MINIMUM_BOTTLES) {
+      alert(`Minimum quantity is ${MINIMUM_BOTTLES} bottles (10 cases)`);
       return;
     }
     const item = items.find(i => i.design_id === designId);
     if (item) {
       updateQuantity(designId, quantity);
-      // Update price
+      // Recalculate price with current options
+      const pricing = calculateOrderPrice({
+        quantity,
+        capColor: item.capColor || 'white',
+        shrinkWrap: item.shrinkWrap || false,
+        shippingMethod: 'pickup', // Shipping calculated at checkout
+        hasSetupFee: false, // Setup fee only on first order
+      });
       const updatedItems = items.map(i =>
         i.design_id === designId
-          ? { ...i, quantity, price: calculatePrice(quantity) }
+          ? { ...i, quantity, price: pricing.subtotal }
+          : i
+      );
+      useCartStore.setState({ items: updatedItems });
+    }
+  };
+
+  const handleCapColorChange = (designId: string, capColor: CapColor) => {
+    const item = items.find(i => i.design_id === designId);
+    if (item) {
+      const pricing = calculateOrderPrice({
+        quantity: item.quantity,
+        capColor,
+        shrinkWrap: item.shrinkWrap || false,
+        shippingMethod: 'pickup',
+        hasSetupFee: false,
+      });
+      const updatedItems = items.map(i =>
+        i.design_id === designId
+          ? { ...i, capColor, price: pricing.subtotal }
+          : i
+      );
+      useCartStore.setState({ items: updatedItems });
+    }
+  };
+
+  const handleShrinkWrapChange = (designId: string, shrinkWrap: boolean) => {
+    const item = items.find(i => i.design_id === designId);
+    if (item) {
+      const pricing = calculateOrderPrice({
+        quantity: item.quantity,
+        capColor: item.capColor || 'white',
+        shrinkWrap,
+        shippingMethod: 'pickup',
+        hasSetupFee: false,
+      });
+      const updatedItems = items.map(i =>
+        i.design_id === designId
+          ? { ...i, shrinkWrap, price: pricing.subtotal }
           : i
       );
       useCartStore.setState({ items: updatedItems });
@@ -177,7 +240,7 @@ export default function CartPage() {
                           className="text-lg font-semibold mb-2 transition-colors"
                           style={{ color: 'var(--text-primary)' }}
                         >
-                          Custom Bottle Design
+                          500ml Custom Labeled Bottle
                         </h3>
                         <div className="space-y-3">
                           <div>
@@ -185,26 +248,83 @@ export default function CartPage() {
                               className="block text-sm font-medium mb-1 transition-colors"
                               style={{ color: 'var(--text-secondary)' }}
                             >
-                              Quantity (min 100)
+                              Quantity (min {MINIMUM_BOTTLES} - 10 cases)
                             </label>
                             <input
                               type="number"
-                              min="100"
+                              min={MINIMUM_BOTTLES}
+                              step="30"
                               value={item.quantity}
                               onChange={(e) =>
-                                handleQuantityChange(item.design_id, parseInt(e.target.value) || 100)
+                                handleQuantityChange(item.design_id, parseInt(e.target.value) || MINIMUM_BOTTLES)
                               }
-                              className="w-24 px-3 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-colors"
+                              className="w-32 px-3 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-colors"
                               style={{ 
                                 backgroundColor: 'var(--input-bg)', 
                                 borderColor: 'var(--input-border)',
                                 color: 'var(--text-primary)'
                               }}
                             />
+                            <p 
+                              className="text-xs mt-1 transition-colors"
+                              style={{ color: 'var(--text-muted)' }}
+                            >
+                              Packaged in cases of 30
+                            </p>
                           </div>
+                          
+                          <div>
+                            <label 
+                              className="block text-sm font-medium mb-1 transition-colors"
+                              style={{ color: 'var(--text-secondary)' }}
+                            >
+                              Cap Color
+                            </label>
+                            <select
+                              value={item.capColor || 'white'}
+                              onChange={(e) => handleCapColorChange(item.design_id, e.target.value as CapColor)}
+                              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-colors text-sm"
+                              style={{ 
+                                backgroundColor: 'var(--input-bg)', 
+                                borderColor: 'var(--input-border)',
+                                color: 'var(--text-primary)'
+                              }}
+                            >
+                              {getCapColorOptions().map(option => (
+                                <option key={option.value} value={option.value}>
+                                  {option.label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+
+                          <div>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={item.shrinkWrap || false}
+                                onChange={(e) => handleShrinkWrapChange(item.design_id, e.target.checked)}
+                                className="w-4 h-4 rounded border focus:ring-2 focus:ring-[#4DB64F] transition-colors"
+                                style={{ 
+                                  backgroundColor: 'var(--input-bg)', 
+                                  borderColor: 'var(--input-border)',
+                                }}
+                              />
+                              <span 
+                                className="text-sm transition-colors"
+                                style={{ color: 'var(--text-secondary)' }}
+                              >
+                                Poly Shrink Wrap (+$1.99 per case)
+                              </span>
+                            </label>
+                          </div>
+
                           <div 
-                            className="text-lg font-semibold transition-colors"
-                            style={{ color: 'var(--text-primary)' }}
+                            className="text-lg font-semibold transition-colors pt-2 border-t"
+                            style={{ 
+                              color: 'var(--text-primary)',
+                              borderColor: 'var(--border-color)'
+                            }}
                           >
                             ${item.price.toFixed(2)}
                           </div>

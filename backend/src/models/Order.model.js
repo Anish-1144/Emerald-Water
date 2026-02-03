@@ -14,7 +14,7 @@ const orderSchema = new mongoose.Schema({
   quantity: {
     type: Number,
     required: true,
-    min: 100
+    min: 300 // Minimum order: 10 cases (300 bottles)
   },
   total_price: {
     type: Number,

@@ -23,6 +23,8 @@ interface CartItem {
   design: Design;
   quantity: number;
   price: number;
+  capColor?: 'white' | 'black' | 'blue' | 'other';
+  shrinkWrap?: boolean;
 }
 
 interface AuthState {
