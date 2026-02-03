@@ -2,15 +2,13 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Star, ChevronLeft, ChevronRight, Check, Truck, Package } from 'lucide-react';
+import { Star, ChevronLeft, ChevronRight, Truck, Package } from 'lucide-react';
 import Image from 'next/image';
 import Header from '@/components/Header';
 
 export default function LandingPage() {
   const router = useRouter();
   const [selectedImage, setSelectedImage] = useState(0);
-  const [selectedColor, setSelectedColor] = useState('white');
-  const [selectedSize, setSelectedSize] = useState('17');
 
   // Product images - using dummy images from public folder
   const productImages = [
@@ -20,13 +18,6 @@ export default function LandingPage() {
     '/login3.png',
     '/logo.jpg',
   ];
-
-  const colors = [
-    { name: 'Black', value: 'black', color: '#000000' },
-    { name: 'White', value: 'white', color: '#ffffff' },
-  ];
-
-  const sizes = ['17 oz', '21 oz', '32 oz'];
 
   const handleNextImage = () => {
     setSelectedImage((prev) => (prev + 1) % productImages.length);
@@ -40,13 +31,14 @@ export default function LandingPage() {
     <div className="min-h-screen flex flex-col transition-colors" style={{ backgroundColor: 'var(--background)' }}>
       <Header />
       <div 
-        className="flex-1 py-8 px-4 md:py-12 md:px-8 lg:py-16 lg:px-12 transition-colors"
+        className="flex-1 transition-colors"
         style={{ backgroundColor: 'var(--background)' }}
       >
-      <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-16 xl:gap-20">
-          {/* Left Side - Image Gallery */}
-          <div className="space-y-6">
+      <div className="max-w-7xl mx-auto h-full">
+        <div className="flex flex-col lg:flex-row h-full">
+          {/* Left Side - Image Gallery (Fixed) */}
+          <div className="lg:sticky lg:top-0 lg:h-screen lg:overflow-hidden shrink-0 w-full lg:w-1/2 p-8 lg:py-12 lg:px-8 xl:px-12">
+            <div className="space-y-6 lg:max-h-screen lg:overflow-y-auto lg:pr-4">
             {/* Main Image */}
             <div 
               className="relative aspect-square rounded-xl overflow-hidden transition-all shadow-lg"
@@ -125,10 +117,12 @@ export default function LandingPage() {
                 </button>
               ))}
             </div>
+            </div>
           </div>
 
-          {/* Right Side - Product Information */}
-          <div className="space-y-8 pt-4">
+          {/* Right Side - Product Information (Scrollable) */}
+          <div className="flex-1 overflow-y-auto p-8 lg:py-12 lg:px-8 xl:px-12">
+            <div className="space-y-8 pt-4 max-w-2xl">
             {/* Product Title */}
             <div className="mb-2">
               <h1 
@@ -179,69 +173,6 @@ export default function LandingPage() {
               >
                 UV printing
               </span>
-            </div>
-
-            {/* Color Selection */}
-            <div className="py-2">
-              <label 
-                className="block text-sm font-medium mb-4 transition-colors"
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                Color
-              </label>
-              <div className="flex gap-4">
-                {colors.map((color) => (
-                  <button
-                    key={color.value}
-                    onClick={() => setSelectedColor(color.value)}
-                    className={`relative w-12 h-12 rounded-lg border-2 transition-all shadow-sm ${
-                      selectedColor === color.value
-                        ? 'border-[#4DB64F] ring-2 ring-[#4DB64F]/30'
-                        : 'border-gray-300'
-                    }`}
-                    style={{
-                      backgroundColor: color.color,
-                      borderColor: selectedColor === color.value ? '#4DB64F' : 'var(--border-color)',
-                      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                    }}
-                  >
-                    {selectedColor === color.value && (
-                      <Check className="absolute inset-0 m-auto w-6 h-6 text-white drop-shadow-lg" />
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Size Selection */}
-            <div className="py-2">
-              <label 
-                className="block text-sm font-medium mb-4 transition-colors"
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                Size
-              </label>
-              <div className="flex gap-4">
-                {sizes.map((size) => (
-                  <button
-                    key={size}
-                    onClick={() => setSelectedSize(size)}
-                    className={`px-4 py-2 rounded-lg border-2 transition-all font-medium shadow-sm ${
-                      selectedSize === size
-                        ? 'border-[#4DB64F] bg-[#4DB64F]/10'
-                        : 'border-gray-300'
-                    }`}
-                    style={{
-                      borderColor: selectedSize === size ? '#4DB64F' : 'var(--border-color)',
-                      backgroundColor: selectedSize === size ? 'rgba(77, 182, 79, 0.1)' : 'var(--card-bg)',
-                      color: 'var(--text-primary)',
-                      boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                    }}
-                  >
-                    {size}
-                  </button>
-                ))}
-              </div>
             </div>
 
             {/* Price */}
@@ -408,10 +339,11 @@ export default function LandingPage() {
                 Visit <a href="https://www.emeraldwater.ca" target="_blank" rel="noopener noreferrer" className="underline hover:text-[#4DB64F]">emeraldwater.ca</a> for examples of previous custom labeled projects.
               </p>
             </div>
+            </div>
           </div>
         </div>
       </div>
-        </div>
+      </div>
     </div>
   );
 }

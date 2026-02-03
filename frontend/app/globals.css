@@ -14,16 +14,16 @@
 }
 
 html.light {
-  --background: #ffffff;
+  --background: #f5f7fa; /* Ice white - softer than pure white */
   --foreground: #1a1a1a;
-  --card-bg: #f9fafb;
-  --border-color: rgba(0, 0, 0, 0.1);
-  --text-primary: #111827;
-  --text-secondary: #374151;
-  --text-muted: #6b7280;
-  --input-bg: #ffffff;
-  --input-border: rgba(0, 0, 0, 0.2);
-  --hover-bg: rgba(0, 0, 0, 0.05);
+  --card-bg: #f0f4f8; /* Light ice white shade */
+  --border-color: rgba(0, 0, 0, 0.08); /* Softer border */
+  --text-primary: #1e293b; /* Slightly softer than pure black */
+  --text-secondary: #475569; /* Softer gray */
+  --text-muted: #64748b; /* Softer muted color */
+  --input-bg: #f8fafc; /* Very light ice white */
+  --input-border: rgba(0, 0, 0, 0.12); /* Softer input border */
+  --hover-bg: rgba(0, 0, 0, 0.04); /* Softer hover effect */
 }
 
 html.dark {
