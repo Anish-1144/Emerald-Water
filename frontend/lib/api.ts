@@ -1,7 +1,8 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
 async function request(endpoint: string, options: RequestInit = {}) {
-  // Check for order token first, then regular token
+  // Check for admin token first, then order token, then regular token
+  const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
   const orderToken = typeof window !== 'undefined' ? localStorage.getItem('orderToken') : null;
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   
@@ -10,10 +11,16 @@ async function request(endpoint: string, options: RequestInit = {}) {
     ...(options.headers as Record<string, string> || {}),
   };
 
-  // Use orderToken for order endpoints, regular token for others
-  if (orderToken && endpoint.includes('/orders')) {
+  // Use admin token for admin endpoints
+  if (adminToken && endpoint.includes('/admin')) {
+    headers['Authorization'] = `Bearer ${adminToken}`;
+  }
+  // Use orderToken for order endpoints (non-admin)
+  else if (orderToken && endpoint.includes('/orders') && !endpoint.includes('/admin')) {
     headers['Authorization'] = `Bearer ${orderToken}`;
-  } else if (token) {
+  } 
+  // Use regular token for other endpoints
+  else if (token && !endpoint.includes('/admin')) {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
@@ -62,14 +69,48 @@ export const orderAPI = {
 
 // Admin API
 export const adminAPI = {
-  getDashboardStats: () => request('/admin/dashboard'),
-  getAllOrders: () => request('/admin/orders'),
-  updateOrderStatus: (id: string, status: string) =>
-    request(`/admin/orders/${id}/status`, {
-      method: 'PUT',
-      body: JSON.stringify({ order_status: status }),
+  login: (email: string, password: string) =>
+    request('/admin/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
     }),
-  getAllUsers: () => request('/admin/users'),
-  getUserDetails: (id: string) => request(`/admin/users/${id}`),
+  getDashboardStats: () => {
+    const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+    return request('/admin/dashboard', {
+      headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
+    });
+  },
+  getAllOrders: () => {
+    const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+    return request('/admin/orders', {
+      headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
+    });
+  },
+  getOrderDetails: (id: string) => {
+    const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+    return request(`/admin/orders/${id}`, {
+      headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
+    });
+  },
+  updateOrderStatus: (id: string, status: string) => {
+    const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+    return request(`/admin/orders/${id}/status`, {
+      method: 'PUT',
+      headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
+      body: JSON.stringify({ order_status: status }),
+    });
+  },
+  getAllUsers: () => {
+    const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+    return request('/admin/users', {
+      headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
+    });
+  },
+  getUserDetails: (id: string) => {
+    const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+    return request(`/admin/users/${id}`, {
+      headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
+    });
+  },
 };
 

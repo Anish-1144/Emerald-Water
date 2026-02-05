@@ -32,7 +32,7 @@ interface BottleModelWithCenterProps extends BottleModelProps {
 }
 
 function BottleModelWithCenter({ capColor, labelTexture, onCenterChange }: BottleModelWithCenterProps) {
-  const gltf = useLoader(GLTFLoader, '/bottle3.glb');
+  const gltf = useLoader(GLTFLoader, '/bottle4.glb');
   const capRef = useRef<Mesh>(null);
   const capTopRef = useRef<Mesh>(null);
   const labelRef = useRef<Mesh>(null);
