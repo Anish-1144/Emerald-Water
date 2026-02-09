@@ -612,14 +612,14 @@ export default function RepeatOrderPage() {
             {/* Design Preview */}
             {originalOrder?.bottle_snapshot && (
               <div 
-                className="border rounded-lg shadow-lg p-6 transition-colors"
+                className="border rounded-lg shadow-lg p-6 transition-colors w- full"
                 style={{ 
                   backgroundColor: 'var(--card-bg)', 
                   borderColor: 'var(--border-color)' 
                 }}
               >
                 <h2 
-                  className="text-xl font-semibold mb-4 transition-colors"
+                  className="text-xl font-semibold mb-4 transition-colors "
                   style={{ color: 'var(--text-primary)' }}
                 >
                   Design Preview

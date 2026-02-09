@@ -20,6 +20,11 @@ export default function AdminSidebar({ orders, selectedOrderId, onOrderSelect }:
   const router = useRouter();
   const pathname = usePathname();
   const { theme, toggleTheme } = useThemeStore();
+  
+  // Get current order ID from pathname
+  const currentOrderId = pathname?.includes('/orders/') 
+    ? pathname.split('/orders/')[1]?.split('/')[0] 
+    : null;
 
   const handleLogout = () => {
     if (typeof window !== 'undefined') {
@@ -126,11 +131,14 @@ export default function AdminSidebar({ orders, selectedOrderId, onOrderSelect }:
               orders.map((order) => (
                 <button
                   key={order._id}
-                  onClick={() => onOrderSelect(order._id)}
+                  onClick={() => {
+                    onOrderSelect(order._id);
+                    router.push(`/admin/orders/${order._id}`);
+                  }}
                   className="w-full p-3 rounded-lg text-left transition-all hover:shadow-md"
                   style={{
-                    backgroundColor: selectedOrderId === order._id ? 'var(--card-bg)' : 'transparent',
-                    border: selectedOrderId === order._id ? '2px solid #4DB64F' : '1px solid var(--border-color)',
+                    backgroundColor: (selectedOrderId === order._id || currentOrderId === order._id) ? 'var(--card-bg)' : 'transparent',
+                    border: (selectedOrderId === order._id || currentOrderId === order._id) ? '2px solid #4DB64F' : '1px solid var(--border-color)',
                   }}
                 >
                   <div className="flex items-start justify-between mb-2">

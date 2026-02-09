@@ -6,15 +6,15 @@ const designSchema = new mongoose.Schema({
     required: true
   },
   label_image: {
-    type: String, // URL or base64
+    type: String, // S3 URL
     required: true
   },
   print_pdf: {
-    type: String, // URL to PDF file
+    type: String, // S3 URL to PDF/image file
     required: true
   },
   bottle_snapshot: {
-    type: String, // URL to snapshot image
+    type: String, // S3 URL to snapshot image
     required: true
   },
   is_draft: {
@@ -24,6 +24,10 @@ const designSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Create indexes for better query performance
+designSchema.index({ createdAt: -1 });
+designSchema.index({ is_draft: 1 });
 
 module.exports = mongoose.model('Design', designSchema);
 

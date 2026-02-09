@@ -11,6 +11,7 @@ import {
   type CapColor,
   type ShippingMethod 
 } from '@/lib/pricing';
+import ThemeSelect from '@/components/ui/ThemeSelect';
 
 export default function CartPage() {
   const router = useRouter();
@@ -280,22 +281,15 @@ export default function CartPage() {
                             >
                               Cap Color
                             </label>
-                            <select
+                            <ThemeSelect
                               value={item.capColor || 'white'}
-                              onChange={(e) => handleCapColorChange(item.design_id, e.target.value as CapColor)}
-                              className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-colors text-sm"
-                              style={{ 
-                                backgroundColor: 'var(--input-bg)', 
-                                borderColor: 'var(--input-border)',
-                                color: 'var(--text-primary)'
-                              }}
-                            >
-                              {getCapColorOptions().map(option => (
-                                <option key={option.value} value={option.value}>
-                                  {option.label}
-                                </option>
-                              ))}
-                            </select>
+                              onChange={(value) => handleCapColorChange(item.design_id, value as CapColor)}
+                              options={getCapColorOptions().map(option => ({
+                                value: option.value,
+                                label: option.label
+                              }))}
+                              className="w-full"
+                            />
                           </div>
 
                           <div>

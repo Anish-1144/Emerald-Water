@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Package, Download, Calendar, MapPin, User, Building, Mail, Phone } from 'lucide-react';
+import BottleMultiAngleView from './BottleMultiAngleView';
 
 interface OrderDetailsProps {
   order: any;
@@ -47,9 +48,34 @@ export default function OrderDetails({ order, onStatusUpdate, loading }: OrderDe
     );
   }
 
+  // Get cap color from order
+  const capColor = order.design_id?.design_json?.capColor || order.design_id?.capColor || '#ffffff';
+  
+  // Function to get color name from hex
+  const getColorName = (hex: string): string => {
+    const colorMap: { [key: string]: string } = {
+      '#ffffff': 'White',
+      '#000000': 'Black',
+      '#ff0000': 'Red',
+      '#00ff00': 'Green',
+      '#0000ff': 'Blue',
+      '#ffff00': 'Yellow',
+      '#ff00ff': 'Magenta',
+      '#00ffff': 'Cyan',
+      '#808080': 'Gray',
+      '#ffa500': 'Orange',
+      '#800080': 'Purple',
+      '#a52a2a': 'Brown',
+      '#ffc0cb': 'Pink',
+    };
+    
+    const normalizedHex = hex.toLowerCase();
+    return colorMap[normalizedHex] || 'Custom';
+  };
+
   return (
     <div className="p-8" style={{ backgroundColor: 'var(--background)' }}>
-      <div className="max-w-6xl mx-auto">
+      <div className="w-full max-w-full mx-auto">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -69,7 +95,8 @@ export default function OrderDetails({ order, onStatusUpdate, loading }: OrderDe
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Order Information and Actions - Top Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Order Information */}
@@ -166,36 +193,6 @@ export default function OrderDetails({ order, onStatusUpdate, loading }: OrderDe
               </div>
             )}
 
-            {/* Design Preview */}
-            <div className="p-6 rounded-lg shadow-lg" style={{ backgroundColor: 'var(--card-bg)' }}>
-              <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
-                Design Preview
-              </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {order.label_image && (
-                  <div>
-                    <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>Label Image</p>
-                    <img
-                      src={order.label_image}
-                      alt="Label design"
-                      className="w-full rounded-lg border"
-                      style={{ borderColor: 'var(--border-color)' }}
-                    />
-                  </div>
-                )}
-                {order.bottle_snapshot && (
-                  <div>
-                    <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>Bottle Snapshot</p>
-                    <img
-                      src={order.bottle_snapshot}
-                      alt="Bottle preview"
-                      className="w-full rounded-lg border"
-                      style={{ borderColor: 'var(--border-color)' }}
-                    />
-                  </div>
-                )}
-              </div>
-            </div>
           </div>
 
           {/* Sidebar Actions */}
@@ -279,6 +276,82 @@ export default function OrderDetails({ order, onStatusUpdate, loading }: OrderDe
                   </div>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Design Preview - Side by Side Layout */}
+        <div className="mb-6 p-6 rounded-lg shadow-lg" style={{ backgroundColor: 'var(--card-bg)' }}>
+          <h2 className="text-xl font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
+            Design Preview
+          </h2>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            {/* Left Column - Two Stacked Sections */}
+            <div className="lg:col-span-1 space-y-4">
+              {/* Top: Cap Color */}
+              <div className="p-4 rounded-lg border" style={{ borderColor: 'var(--border-color)' }}>
+                <div className="flex items-center gap-3">
+                  <div 
+                    className="w-16 h-16 rounded-full border-2 flex-shrink-0"
+                    style={{ 
+                      backgroundColor: capColor,
+                      borderColor: 'var(--border-color)'
+                    }}
+                  />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium mb-1" style={{ color: 'var(--text-muted)' }}>colour</p>
+                    <p className="font-semibold text-base" style={{ color: 'var(--text-primary)' }}>
+                      {getColorName(capColor)}
+                    </p>
+                    <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
+                      {capColor.toUpperCase()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom: Label */}
+              <div className="p-4 rounded-lg border" style={{ borderColor: 'var(--border-color)' }}>
+                <p className="text-sm font-medium mb-3 text-center" style={{ color: 'var(--text-muted)' }}>label</p>
+                {order.label_image ? (
+                  <img
+                    src={order.label_image}
+                    alt="Label design"
+                    className="w-full rounded-lg border"
+                    style={{ borderColor: 'var(--border-color)' }}
+                  />
+                ) : (
+                  <p className="text-sm text-center" style={{ color: 'var(--text-muted)' }}>No label image</p>
+                )}
+              </div>
+            </div>
+
+            {/* Right Column - 3D Model (Full Height) */}
+            <div className="lg:col-span-2 p-4 rounded-lg border" style={{ 
+              borderColor: 'var(--border-color)',
+              borderWidth: '2px'
+            }}>
+              <p className="text-sm font-medium mb-3" style={{ color: 'var(--text-muted)' }}>3D model</p>
+              {order.label_image ? (
+                <BottleMultiAngleView 
+                  labelImage={order.label_image}
+                  capColor={capColor}
+                  height="600px"
+                  showInstructions={true}
+                />
+              ) : order.bottle_snapshot ? (
+                <div className="flex justify-center">
+                  <img
+                    src={order.bottle_snapshot}
+                    alt="Bottle preview"
+                    className="w-full max-w-2xl rounded-lg border shadow-lg"
+                    style={{ borderColor: 'var(--border-color)' }}
+                  />
+                </div>
+              ) : (
+                <p className="text-sm text-center" style={{ color: 'var(--text-muted)' }}>No bottle preview</p>
+              )}
             </div>
           </div>
         </div>

@@ -6,6 +6,8 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "check-db": "node scripts/check-db.js",
+    "migrate-s3": "node scripts/migrate-images-to-s3.js",
+    "create-indexes": "node scripts/create-indexes.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -13,6 +15,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.985.0",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.6",
     "dotenv": "^17.2.3",

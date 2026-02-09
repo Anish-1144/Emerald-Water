@@ -472,13 +472,11 @@ export default function DesignPanel({
                                         handleQuantityChange(item.design_id, parseInt(e.target.value) || 100)
                                       }
                                       className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#4DB64F]/30 transition-all shadow-sm"
-                                      style={{
-                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                                      }}
                                       style={{ 
                                         backgroundColor: 'var(--input-bg)', 
                                         borderColor: 'var(--input-border)',
-                                        color: 'var(--text-primary)'
+                                        color: 'var(--text-primary)',
+                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
                                       }}
                                     />
                                   </div>
@@ -599,13 +597,11 @@ export default function DesignPanel({
                             value={shippingData.company_name}
                             onChange={(e) => setShippingData({ ...shippingData, company_name: e.target.value })}
                             className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-all shadow-sm"
-                                      style={{
-                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                                      }}
                             style={{ 
                               backgroundColor: 'var(--input-bg)', 
                               borderColor: 'var(--input-border)',
-                              color: 'var(--text-primary)'
+                              color: 'var(--text-primary)',
+                              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
                             }}
                           />
                         </div>
@@ -623,13 +619,11 @@ export default function DesignPanel({
                             value={shippingData.full_name}
                             onChange={(e) => setShippingData({ ...shippingData, full_name: e.target.value })}
                             className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-all shadow-sm"
-                                      style={{
-                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                                      }}
                             style={{ 
                               backgroundColor: 'var(--input-bg)', 
                               borderColor: 'var(--input-border)',
-                              color: 'var(--text-primary)'
+                              color: 'var(--text-primary)',
+                              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
                             }}
                           />
                         </div>
@@ -647,13 +641,11 @@ export default function DesignPanel({
                             value={shippingData.email}
                             onChange={(e) => setShippingData({ ...shippingData, email: e.target.value })}
                             className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-all shadow-sm"
-                                      style={{
-                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                                      }}
                             style={{ 
                               backgroundColor: 'var(--input-bg)', 
                               borderColor: 'var(--input-border)',
-                              color: 'var(--text-primary)'
+                              color: 'var(--text-primary)',
+                              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
                             }}
                           />
                         </div>
@@ -671,13 +663,11 @@ export default function DesignPanel({
                             value={shippingData.phone}
                             onChange={(e) => setShippingData({ ...shippingData, phone: e.target.value })}
                             className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-all shadow-sm"
-                                      style={{
-                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                                      }}
                             style={{ 
                               backgroundColor: 'var(--input-bg)', 
                               borderColor: 'var(--input-border)',
-                              color: 'var(--text-primary)'
+                              color: 'var(--text-primary)',
+                              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
                             }}
                           />
                         </div>
@@ -695,13 +685,11 @@ export default function DesignPanel({
                             value={shippingData.address1}
                             onChange={(e) => setShippingData({ ...shippingData, address1: e.target.value })}
                             className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-all shadow-sm"
-                                      style={{
-                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                                      }}
                             style={{ 
                               backgroundColor: 'var(--input-bg)', 
                               borderColor: 'var(--input-border)',
-                              color: 'var(--text-primary)'
+                              color: 'var(--text-primary)',
+                              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
                             }}
                           />
                         </div>
@@ -718,13 +706,11 @@ export default function DesignPanel({
                             value={shippingData.address2}
                             onChange={(e) => setShippingData({ ...shippingData, address2: e.target.value })}
                             className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-all shadow-sm"
-                                      style={{
-                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                                      }}
                             style={{ 
                               backgroundColor: 'var(--input-bg)', 
                               borderColor: 'var(--input-border)',
-                              color: 'var(--text-primary)'
+                              color: 'var(--text-primary)',
+                              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
                             }}
                           />
                         </div>
@@ -743,13 +729,11 @@ export default function DesignPanel({
                               value={shippingData.zip}
                               onChange={(e) => setShippingData({ ...shippingData, zip: e.target.value })}
                               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-all shadow-sm"
-                                      style={{
-                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                                      }}
                               style={{ 
                                 backgroundColor: 'var(--input-bg)', 
                                 borderColor: 'var(--input-border)',
-                                color: 'var(--text-primary)'
+                                color: 'var(--text-primary)',
+                                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
                               }}
                             />
                           </div>
@@ -767,13 +751,11 @@ export default function DesignPanel({
                               value={shippingData.city}
                               onChange={(e) => setShippingData({ ...shippingData, city: e.target.value })}
                               className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-all shadow-sm"
-                                      style={{
-                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                                      }}
                               style={{ 
                                 backgroundColor: 'var(--input-bg)', 
                                 borderColor: 'var(--input-border)',
-                                color: 'var(--text-primary)'
+                                color: 'var(--text-primary)',
+                                boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
                               }}
                             />
                           </div>
@@ -792,13 +774,11 @@ export default function DesignPanel({
                             value={shippingData.country}
                             onChange={(e) => setShippingData({ ...shippingData, country: e.target.value })}
                             className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] transition-all shadow-sm"
-                                      style={{
-                                        boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                                      }}
                             style={{ 
                               backgroundColor: 'var(--input-bg)', 
                               borderColor: 'var(--input-border)',
-                              color: 'var(--text-primary)'
+                              color: 'var(--text-primary)',
+                              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
                             }}
                           />
                         </div>
@@ -808,13 +788,11 @@ export default function DesignPanel({
                             type="button"
                             onClick={() => setCheckoutStep('products')}
                             className="flex-1 px-5 py-3 rounded-lg transition-all duration-200 font-semibold flex items-center justify-center gap-2 border active:scale-[0.98] shadow-sm"
-                            style={{
-                              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
-                            }}
                             style={{ 
                               backgroundColor: 'var(--card-bg)', 
                               borderColor: 'var(--border-color)',
-                              color: 'var(--text-primary)'
+                              color: 'var(--text-primary)',
+                              boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)'
                             }}
                             onMouseEnter={(e) => {
                               e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
