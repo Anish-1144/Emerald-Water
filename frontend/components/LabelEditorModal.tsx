@@ -221,6 +221,7 @@ export default function LabelEditorModal({
       }
     });
 
+
     // Draw selection box and handles for selected element
     if (selectedElement) {
       ctx.strokeStyle = '#4DB64F';
@@ -720,12 +721,89 @@ export default function LabelEditorModal({
           >
             <div
               ref={containerRef}
-              className="rounded-lg p-4 inline-block relative transition-colors"
+              className="rounded-lg inline-block relative transition-colors"
               style={{
                 boxShadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
                 backgroundColor: 'var(--card-bg)',
+                padding: `${50 * displayScale}px`,
               }}
             >
+              {/* Dimension Overlay SVG - positioned to use the padding space */}
+              <svg
+                className="absolute pointer-events-none"
+                style={{
+                  left: `0px`,
+                  top: `0px`,
+                  width: `${CANVAS_WIDTH * displayScale + 100 * displayScale}px`,
+                  height: `${CANVAS_HEIGHT * displayScale + 100 * displayScale}px`,
+                  zIndex: 2,
+                }}
+              >
+                {/* Width dimension line (horizontal at bottom, in padding area) */}
+                <line
+                  x1={50 * displayScale}
+                  y1={CANVAS_HEIGHT * displayScale + 50 * displayScale + 20 * displayScale}
+                  x2={CANVAS_WIDTH * displayScale + 50 * displayScale}
+                  y2={CANVAS_HEIGHT * displayScale + 50 * displayScale + 20 * displayScale}
+                  stroke="#4DB64F"
+                  strokeWidth={2.5 * displayScale}
+                />
+                {/* Left arrow */}
+                <path
+                  d={`M ${50 * displayScale},${CANVAS_HEIGHT * displayScale + 50 * displayScale + 20 * displayScale} L ${50 * displayScale + 12 * displayScale},${CANVAS_HEIGHT * displayScale + 50 * displayScale + 20 * displayScale - 6 * displayScale} L ${50 * displayScale + 12 * displayScale},${CANVAS_HEIGHT * displayScale + 50 * displayScale + 20 * displayScale + 6 * displayScale} Z`}
+                  fill="#4DB64F"
+                />
+                {/* Right arrow */}
+                <path
+                  d={`M ${CANVAS_WIDTH * displayScale + 50 * displayScale},${CANVAS_HEIGHT * displayScale + 50 * displayScale + 20 * displayScale} L ${CANVAS_WIDTH * displayScale + 50 * displayScale - 12 * displayScale},${CANVAS_HEIGHT * displayScale + 50 * displayScale + 20 * displayScale - 6 * displayScale} L ${CANVAS_WIDTH * displayScale + 50 * displayScale - 12 * displayScale},${CANVAS_HEIGHT * displayScale + 50 * displayScale + 20 * displayScale + 6 * displayScale} Z`}
+                  fill="#4DB64F"
+                />
+                {/* Width text */}
+                <text
+                  x={(CANVAS_WIDTH * displayScale + 100 * displayScale) / 2}
+                  y={CANVAS_HEIGHT * displayScale + 50 * displayScale + 45 * displayScale}
+                  fill="#4DB64F"
+                  fontSize={24 * displayScale}
+                  textAnchor="middle"
+                  fontFamily="Arial"
+                  fontWeight="700"
+                >
+                  7 inch
+                </text>
+                {/* Height dimension line (vertical on right, in padding area) */}
+                <line
+                  x1={CANVAS_WIDTH * displayScale + 50 * displayScale + 20 * displayScale}
+                  y1={50 * displayScale}
+                  x2={CANVAS_WIDTH * displayScale + 50 * displayScale + 20 * displayScale}
+                  y2={CANVAS_HEIGHT * displayScale + 50 * displayScale}
+                  stroke="#4DB64F"
+                  strokeWidth={2.5 * displayScale}
+                />
+                {/* Top arrow */}
+                <path
+                  d={`M ${CANVAS_WIDTH * displayScale + 50 * displayScale + 20 * displayScale},${50 * displayScale} L ${CANVAS_WIDTH * displayScale + 50 * displayScale + 20 * displayScale - 6 * displayScale},${50 * displayScale + 12 * displayScale} L ${CANVAS_WIDTH * displayScale + 50 * displayScale + 20 * displayScale + 6 * displayScale},${50 * displayScale + 12 * displayScale} Z`}
+                  fill="#4DB64F"
+                />
+                {/* Bottom arrow */}
+                <path
+                  d={`M ${CANVAS_WIDTH * displayScale + 50 * displayScale + 20 * displayScale},${CANVAS_HEIGHT * displayScale + 50 * displayScale} L ${CANVAS_WIDTH * displayScale + 50 * displayScale + 20 * displayScale - 6 * displayScale},${CANVAS_HEIGHT * displayScale + 50 * displayScale - 12 * displayScale} L ${CANVAS_WIDTH * displayScale + 50 * displayScale + 20 * displayScale + 6 * displayScale},${CANVAS_HEIGHT * displayScale + 50 * displayScale - 12 * displayScale} Z`}
+                  fill="#4DB64F"
+                />
+                {/* Height text (rotated) */}
+                <text
+                  x={CANVAS_WIDTH * displayScale + 50 * displayScale + 50 * displayScale}
+                  y={(CANVAS_HEIGHT * displayScale + 100 * displayScale) / 2}
+                  fill="#4DB64F"
+                  fontSize={24 * displayScale}
+                  textAnchor="middle"
+                  fontFamily="Arial"
+                  fontWeight="700"
+                  transform={`rotate(-90 ${CANVAS_WIDTH * displayScale + 50 * displayScale + 50 * displayScale} ${(CANVAS_HEIGHT * displayScale + 100 * displayScale) / 2})`}
+                >
+                  2 inch
+                </text>
+              </svg>
+              
               <canvas
                 ref={canvasRef}
                 onMouseDown={handleMouseDown}
@@ -733,12 +811,14 @@ export default function LabelEditorModal({
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
                 onDoubleClick={handleDoubleClick}
-                className="border rounded cursor-default transition-colors"
+                className="border rounded cursor-default transition-colors relative"
                 style={{
                   width: `${CANVAS_WIDTH * displayScale}px`,
                   height: `${CANVAS_HEIGHT * displayScale}px`,
                   borderColor: 'var(--border-color)',
                   backgroundColor: 'var(--background)',
+                  position: 'relative',
+                  zIndex: 1,
                 }}
               />
               {/* Inline text editor overlay */}

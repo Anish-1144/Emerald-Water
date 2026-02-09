@@ -406,11 +406,12 @@ export default function LabelDesignPanel({
           Preview
         </h3>
         <div 
-          className="w-full border rounded-lg overflow-hidden flex items-center justify-center p-4 transition-colors"
+          className="w-full border rounded-lg overflow-hidden flex items-center justify-center transition-colors relative"
           style={{ 
             backgroundColor: 'var(--card-bg)', 
             borderColor: 'var(--border-color)',
-            minHeight: '100px'
+            minHeight: '100px',
+            padding: '20px'
           }}
         >
           <canvas
@@ -418,7 +419,10 @@ export default function LabelDesignPanel({
             style={{ 
               display: 'block',
               maxWidth: '100%',
-              height: 'auto'
+              height: 'auto',
+              position: 'relative',
+              zIndex: 1,
+              backgroundColor: 'transparent'
             }}
           />
         </div>
