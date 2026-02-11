@@ -42,7 +42,5 @@ networks:
   ecommerce-network:
     driver: bridge
 
-volumes:
-  mongodb_data:
-    driver: local
+
 
