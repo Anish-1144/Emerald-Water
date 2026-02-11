@@ -1,6 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import { ShoppingCart, Undo2, Redo2, LogOut } from 'lucide-react';
 import { useAuthStore, useCartStore } from '@/lib/store';
 import Image from 'next/image';
@@ -11,6 +12,12 @@ export default function Header() {
   const { user, logout } = useAuthStore();
   const { items } = useCartStore();
   const cartItemCount = items.length;
+  const [mounted, setMounted] = useState(false);
+
+  // Prevent hydration mismatch by only rendering user-dependent UI after mount
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -106,8 +113,8 @@ export default function Header() {
             )}
           </button>
 
-          {/* Logout Button - Only show if logged in */}
-          {user && (
+          {/* Logout Button - Only show if logged in and mounted (prevents hydration mismatch) */}
+          {mounted && user && (
             <button
               onClick={handleLogout}
               className="p-2 rounded-lg border transition-colors"

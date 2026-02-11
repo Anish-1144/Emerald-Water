@@ -1,5 +1,7 @@
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const crypto = require('crypto');
+const sharp = require('sharp');
+const PDFDocument = require('pdfkit');
 
 // Initialize S3 client
 const s3Client = new S3Client({
@@ -31,20 +33,24 @@ function parseBase64DataUrl(dataUrl) {
     return { isUrl: true, url: dataUrl };
   }
 
-  // Parse data URL format: data:image/png;base64,<data>
+  // Parse data URL format: data:image/png;base64,<data> or data:application/pdf;base64,<data>
   const matches = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
   if (!matches) {
     throw new Error('Invalid base64 data URL format');
   }
 
-  const contentType = matches[1]; // e.g., "image/png"
+  const contentType = matches[1]; // e.g., "image/png" or "application/pdf"
   const base64Data = matches[2];
 
   // Convert base64 to buffer
   const buffer = Buffer.from(base64Data, 'base64');
 
   // Get file extension from content type
-  const extension = contentType.split('/')[1] || 'png';
+  let extension = contentType.split('/')[1] || 'png';
+  // Handle PDF content type
+  if (contentType === 'application/pdf') {
+    extension = 'pdf';
+  }
 
   return { buffer, contentType, extension, isUrl: false };
 }
@@ -87,8 +93,18 @@ async function uploadToS3(dataUrl, prefix = 'images') {
       return dataUrl;
     }
 
+    // Determine file extension and content type
+    let fileExtension = extension;
+    let fileContentType = contentType;
+    
+    // If it's a PDF, use pdf extension
+    if (contentType === 'application/pdf' || dataUrl.startsWith('data:application/pdf')) {
+      fileExtension = 'pdf';
+      fileContentType = 'application/pdf';
+    }
+
     // Generate unique file name
-    const fileName = generateFileName(prefix, extension);
+    const fileName = generateFileName(prefix, fileExtension);
 
     // Upload to S3
     // Note: ACLs are disabled by default on new S3 buckets
@@ -97,7 +113,7 @@ async function uploadToS3(dataUrl, prefix = 'images') {
       Bucket: BUCKET_NAME,
       Key: fileName,
       Body: buffer,
-      ContentType: contentType,
+      ContentType: fileContentType,
       // ACL removed - use bucket policy for public access if needed
     });
 
@@ -165,6 +181,104 @@ async function deleteFromS3(s3Url) {
 }
 
 /**
+ * Resize image to specific dimensions
+ * @param {string} dataUrl - Base64 data URL
+ * @param {number} width - Target width in pixels
+ * @param {number} height - Target height in pixels
+ * @returns {Promise<string>} - Resized image as base64 data URL
+ */
+async function resizeImage(dataUrl, width, height) {
+  try {
+    // Parse base64 data URL
+    const { buffer, contentType, isUrl } = parseBase64DataUrl(dataUrl);
+    
+    if (isUrl) {
+      // If it's already a URL, return as-is (can't resize URLs)
+      return dataUrl;
+    }
+
+    // Resize image using sharp to exact dimensions
+    const resizedBuffer = await sharp(buffer)
+      .resize(width, height, {
+        fit: 'cover', // Fill the exact dimensions, maintaining aspect ratio (may crop)
+        position: 'center' // Center the image when cropping
+      })
+      .png() // Convert to PNG for consistency
+      .toBuffer();
+
+    // Convert back to base64 data URL
+    const base64Data = resizedBuffer.toString('base64');
+    return `data:image/png;base64,${base64Data}`;
+  } catch (error) {
+    console.error('Error resizing image:', error);
+    // If resize fails, return original image
+    return dataUrl;
+  }
+}
+
+/**
+ * Convert image to PDF
+ * @param {string} dataUrl - Base64 image data URL
+ * @param {number} width - Image width in pixels (will be converted to points for PDF)
+ * @param {number} height - Image height in pixels (will be converted to points for PDF)
+ * @returns {Promise<string>} - PDF as base64 data URL
+ */
+async function imageToPdf(dataUrl, width, height) {
+  return new Promise((resolve, reject) => {
+    try {
+      // Parse base64 data URL
+      const { buffer, isUrl } = parseBase64DataUrl(dataUrl);
+      
+      if (isUrl) {
+        // If it's already a URL, we can't convert it directly
+        reject(new Error('Cannot convert URL to PDF directly'));
+        return;
+      }
+
+      // Convert pixels to points (1 pixel = 0.75 points at 96 DPI)
+      // For 96 DPI: 1 inch = 96 pixels = 72 points
+      // So: 1 pixel = 72/96 = 0.75 points
+      const widthInPoints = width * 0.75;
+      const heightInPoints = height * 0.75;
+
+      // Create PDF document
+      const doc = new PDFDocument({
+        size: [widthInPoints, heightInPoints],
+        margin: 0
+      });
+
+      const chunks = [];
+      
+      doc.on('data', (chunk) => {
+        chunks.push(chunk);
+      });
+
+      doc.on('end', () => {
+        const pdfBuffer = Buffer.concat(chunks);
+        const base64Data = pdfBuffer.toString('base64');
+        resolve(`data:application/pdf;base64,${base64Data}`);
+      });
+
+      doc.on('error', (error) => {
+        reject(error);
+      });
+
+      // Add image to PDF (fill the entire page)
+      doc.image(buffer, 0, 0, {
+        width: widthInPoints,
+        height: heightInPoints,
+        fit: [widthInPoints, heightInPoints]
+      });
+
+      // Finalize PDF
+      doc.end();
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
  * Upload multiple images to S3
  * @param {Object} images - Object with label_image, print_pdf, bottle_snapshot
  * @returns {Promise<Object>} - Object with S3 URLs
@@ -182,10 +296,25 @@ async function uploadDesignImages(images) {
     }
   }
 
-  // Upload print_pdf
+  // Upload print_pdf - resize to 672x192 pixels and convert to PDF before uploading
   if (images.print_pdf) {
     try {
-      results.print_pdf = await uploadToS3(images.print_pdf, 'print-pdfs');
+      let printPdfToUpload = images.print_pdf;
+      
+      // Only process if it's a base64 image (not already an S3 URL)
+      if (printPdfToUpload && printPdfToUpload.startsWith('data:')) {
+        console.log('Processing print_pdf: resizing to 672x192 pixels and converting to PDF...');
+        
+        // First resize the image to exactly 672x192 pixels
+        const resizedImage = await resizeImage(printPdfToUpload, 672, 192);
+        console.log('Image resized to 672x192 pixels');
+        
+        // Convert the resized image to PDF
+        printPdfToUpload = await imageToPdf(resizedImage, 672, 192);
+        console.log('Image converted to PDF successfully');
+      }
+      
+      results.print_pdf = await uploadToS3(printPdfToUpload, 'print-pdfs');
     } catch (error) {
       console.error('Error uploading print_pdf:', error);
       throw error;

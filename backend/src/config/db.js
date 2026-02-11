@@ -26,8 +26,14 @@ const connectDB = async () => {
     console.log('Attempting to connect to MongoDB...');
     
     const conn = await mongoose.connect(mongoURI, {
-      serverSelectionTimeoutMS: 10000, // Timeout after 10s
-      socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
+      serverSelectionTimeoutMS: 30000, // Timeout after 30s (increased from 10s)
+      socketTimeoutMS: 60000, // Close sockets after 60s of inactivity (increased from 45s)
+      connectTimeoutMS: 30000, // Connection timeout 30s
+      maxPoolSize: 10, // Maintain up to 10 socket connections
+      minPoolSize: 2, // Maintain at least 2 socket connections
+      retryWrites: true, // Retry write operations
+      retryReads: true, // Retry read operations
+      heartbeatFrequencyMS: 10000, // How often to check connection health
     });
     
     console.log(`✅ MongoDB Connected Successfully!`);
@@ -38,10 +44,26 @@ const connectDB = async () => {
     // Handle connection events
     mongoose.connection.on('error', (err) => {
       console.error('MongoDB connection error:', err);
+      if (err.name === 'MongoNetworkTimeoutError') {
+        console.error('⚠️  Network timeout detected. This could be due to:');
+        console.error('   - Slow network connection');
+        console.error('   - Firewall blocking the connection');
+        console.error('   - MongoDB server is overloaded');
+        console.error('   - IP address not whitelisted (for MongoDB Atlas)');
+      }
     });
 
     mongoose.connection.on('disconnected', () => {
-      console.log('MongoDB disconnected');
+      console.log('⚠️  MongoDB disconnected. Attempting to reconnect...');
+      // Auto-reconnect is handled by mongoose by default
+    });
+
+    mongoose.connection.on('reconnected', () => {
+      console.log('✅ MongoDB reconnected successfully');
+    });
+
+    mongoose.connection.on('connecting', () => {
+      console.log('🔄 Attempting to connect to MongoDB...');
     });
 
     // Graceful shutdown

@@ -206,7 +206,13 @@ export default function CartPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-4">
               {items.map((item) => {
-                const design = designs.find(d => d._id === item.design_id) || item.design;
+                // Prioritize item.design (from localStorage) over designs array
+                // item.design contains base64 images stored in localStorage
+                const design = item.design || designs.find(d => d._id === item.design_id);
+                
+                // Get image from localStorage (bottle_snapshot preferred, fallback to label_image)
+                const previewImage = design?.bottle_snapshot || design?.label_image;
+                
                 return (
                   <div 
                     key={item.design_id} 
@@ -218,18 +224,34 @@ export default function CartPage() {
                   >
                     <div className="flex gap-4">
                       <div 
-                        className="w-32 h-32 rounded-lg overflow-hidden shrink-0 transition-colors"
-                        style={{ backgroundColor: 'var(--input-bg)' }}
+                        className="w-40 h-40 rounded-lg overflow-hidden shrink-0 transition-colors border flex items-center justify-center"
+                        style={{ 
+                          backgroundColor: 'var(--input-bg)',
+                          borderColor: 'var(--border-color)'
+                        }}
                       >
-                        {(design?.label_image || design?.bottle_snapshot) ? (
+                        {previewImage ? (
                           <img
-                            src={design?.label_image || design?.bottle_snapshot}
+                            src={previewImage}
                             alt="Design preview"
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-contain"
+                            onError={(e) => {
+                              // Fallback if image fails to load
+                              const target = e.target as HTMLImageElement;
+                              target.style.display = 'none';
+                              const parent = target.parentElement;
+                              if (parent) {
+                                const fallback = document.createElement('div');
+                                fallback.className = 'w-full h-full flex items-center justify-center text-sm';
+                                fallback.style.color = 'var(--text-muted)';
+                                fallback.textContent = 'Preview';
+                                parent.appendChild(fallback);
+                              }
+                            }}
                           />
                         ) : (
                           <div 
-                            className="w-full h-full flex items-center justify-center transition-colors"
+                            className="w-full h-full flex items-center justify-center transition-colors text-sm"
                             style={{ color: 'var(--text-muted)' }}
                           >
                             Preview

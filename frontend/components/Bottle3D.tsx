@@ -471,7 +471,7 @@ const BottleViewer = forwardRef<BottleViewerRef>((props, ref) => {
   }));
 
   // Get background color based on theme
-  const backgroundColor = theme === 'light' ? '#f6f6f8' : '#000000';
+  const backgroundColor = theme === 'light' ? '#ededed' : '#1E1E1E';
 
   return (
     <div 

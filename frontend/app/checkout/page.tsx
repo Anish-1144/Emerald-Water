@@ -44,11 +44,23 @@ export default function CheckoutPage() {
     try {
       // Create orders for each cart item
       for (const item of items) {
+        // Get images from design (stored in localStorage via cart)
+        // These are base64 images that will be uploaded to S3 when payment is confirmed
+        const images = {
+          label_image: item.design?.label_image || null,
+          print_pdf: item.design?.print_pdf || null,
+          bottle_snapshot: item.design?.bottle_snapshot || null,
+        };
+
         await orderAPI.createOrder({
           design_id: item.design_id,
           quantity: item.quantity,
           total_price: item.price,
           shipping_address: formData,
+          // Send images from localStorage (base64) - will be uploaded to S3 on backend
+          ...(images.label_image && { label_image: images.label_image }),
+          ...(images.print_pdf && { print_pdf: images.print_pdf }),
+          ...(images.bottle_snapshot && { bottle_snapshot: images.bottle_snapshot }),
         });
       }
 
@@ -373,13 +385,13 @@ export default function CheckoutPage() {
               <div 
                 className="border rounded-lg p-4 mt-6 transition-colors"
                 style={{ 
-                  backgroundColor: 'rgba(234, 179, 8, 0.2)', 
-                  borderColor: 'rgba(234, 179, 8, 0.5)',
-                  color: '#fde047'
+                  backgroundColor: '#fef9c3',
+                  borderColor: '#fde047',
+                  color: '#ca8a04'
                 }}
               >
                 <p className="text-sm">
-                  <strong style={{ color: '#fef08a' }}>Note:</strong> Payment integration is not implemented yet. Orders will be marked as successful for testing purposes.
+                  <strong>Note:</strong> Payment integration is not implemented yet. Orders will be marked as successful for testing purposes.
                 </p>
               </div>
 

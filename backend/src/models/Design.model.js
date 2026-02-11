@@ -6,16 +6,16 @@ const designSchema = new mongoose.Schema({
     required: true
   },
   label_image: {
-    type: String, // S3 URL
-    required: true
+    type: String, // S3 URL (only stored after payment confirmation)
+    required: false
   },
   print_pdf: {
-    type: String, // S3 URL to PDF/image file
-    required: true
+    type: String, // S3 URL to PDF/image file (only stored after payment confirmation)
+    required: false
   },
   bottle_snapshot: {
-    type: String, // S3 URL to snapshot image
-    required: true
+    type: String, // S3 URL to snapshot image (only stored after payment confirmation)
+    required: false
   },
   is_draft: {
     type: Boolean,

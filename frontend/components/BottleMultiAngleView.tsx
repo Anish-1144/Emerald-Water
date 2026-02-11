@@ -122,6 +122,8 @@ function BottleModelWithCenter({ labelImage, capColor, onCenterChange }: {
     // Rotate the entire bottle model to show label facing camera
     gltf.scene.rotation.y = Math.PI; // 180 degrees
     
+    let labelFound = false;
+    
     gltf.scene.traverse((child) => {
       if (child instanceof Mesh) {
         const meshName = child.name.toLowerCase();
@@ -129,16 +131,30 @@ function BottleModelWithCenter({ labelImage, capColor, onCenterChange }: {
         if (meshName === 'cap' && !meshName.includes('top')) {
           capRef.current = child;
         } else if (meshName === 'label') {
+          // Found label mesh - store reference and original material
           labelRef.current = child;
+          labelFound = true;
+          console.log('Label mesh found:', child.name, 'Position:', child.position, 'Rotation:', child.rotation);
+          // Store original material to preserve properties (don't clone yet)
           if (child.material) {
             labelOriginalMaterialRef.current = child.material;
           }
+          // Make label double-sided so it's visible from both sides
           if (child.material instanceof THREE.MeshStandardMaterial) {
             child.material.side = THREE.DoubleSide;
           }
         }
       }
     });
+
+    if (!labelFound) {
+      console.warn('Label mesh not found in model. Available meshes:');
+      gltf.scene.traverse((child) => {
+        if (child instanceof Mesh) {
+          console.log('  -', child.name);
+        }
+      });
+    }
 
     setIsLoaded(true);
   }, [gltf]);
@@ -161,40 +177,360 @@ function BottleModelWithCenter({ labelImage, capColor, onCenterChange }: {
     }
   }, [capColor]);
 
-  // Apply label texture
+  // Apply label texture - wait for model to be loaded first
   useEffect(() => {
-    if (labelImage && labelRef.current) {
-      const loader = new THREE.TextureLoader();
-      loader.load(
-        labelImage,
-        (texture) => {
-          texture.flipY = false;
-          texture.wrapS = THREE.RepeatWrapping;
-          texture.wrapT = THREE.RepeatWrapping;
-          
-          if (labelRef.current) {
-            const originalMaterial = labelOriginalMaterialRef.current;
-            const newMaterial = originalMaterial instanceof THREE.MeshStandardMaterial
-              ? originalMaterial.clone()
-              : new THREE.MeshStandardMaterial();
-            
-            newMaterial.map = texture;
-            newMaterial.needsUpdate = true;
-            if (newMaterial instanceof THREE.MeshStandardMaterial) {
-              newMaterial.side = THREE.DoubleSide;
-            }
-            labelRef.current.material = newMaterial;
-          }
-        },
-        undefined,
-        (error) => {
-          console.error('Error loading label texture:', error);
-        }
-      );
-    } else if (labelRef.current && !labelImage && labelOriginalMaterialRef.current) {
-      labelRef.current.material = labelOriginalMaterialRef.current;
+    console.log('[Label Texture] Effect triggered', {
+      isLoaded,
+      hasLabelRef: !!labelRef.current,
+      hasLabelImage: !!labelImage,
+      labelImageType: typeof labelImage,
+      labelImagePreview: labelImage ? labelImage.substring(0, 100) : 'null'
+    });
+    
+    // Don't try to apply texture until model is loaded and labelRef is set
+    if (!isLoaded) {
+      console.log('[Label Texture] Model not loaded yet, waiting...');
+      return;
     }
-  }, [labelImage]);
+    
+    if (!labelRef.current) {
+      console.warn('[Label Texture] Label ref not set, cannot apply texture');
+      return;
+    }
+
+    console.log('[Label Texture] Label mesh found:', {
+      meshName: labelRef.current.name,
+      position: labelRef.current.position,
+      rotation: labelRef.current.rotation,
+      visible: labelRef.current.visible
+    });
+
+    // Validate labelImage before attempting to load
+    if (!labelImage || typeof labelImage !== 'string' || labelImage.trim() === '') {
+      console.log('[Label Texture] No label image provided, using default material');
+      // Reset to original material if no valid image
+      if (labelRef.current && labelOriginalMaterialRef.current) {
+        labelRef.current.material = labelOriginalMaterialRef.current;
+      }
+      return;
+    }
+
+    console.log('[Label Texture] Starting to load label texture', {
+      url: labelImage.substring(0, 100),
+      fullUrlLength: labelImage.length,
+      isDataUrl: labelImage.startsWith('data:'),
+      isHttp: labelImage.startsWith('http://'),
+      isHttps: labelImage.startsWith('https://'),
+      isRelative: labelImage.startsWith('/')
+    });
+
+    // Validate URL format (data URL or http/https)
+    const isValidUrl = labelImage.startsWith('data:') || 
+                       labelImage.startsWith('http://') || 
+                       labelImage.startsWith('https://') ||
+                       labelImage.startsWith('/');
+    
+    if (!isValidUrl) {
+      console.warn('[Label Texture] Invalid label image URL format:', labelImage);
+      // Reset to original material for invalid URLs
+      if (labelRef.current && labelOriginalMaterialRef.current) {
+        labelRef.current.material = labelOriginalMaterialRef.current;
+      }
+      return;
+    }
+
+    // Helper function to create texture from image
+    const createTextureFromImage = (image: HTMLImageElement) => {
+      if (!labelRef.current) {
+        console.warn('Label ref not available');
+        return;
+      }
+      
+      try {
+        // Create texture from the loaded image
+        const texture = new THREE.Texture(image);
+        texture.needsUpdate = true;
+        
+        console.log('Label texture created successfully, dimensions:', image.width, 'x', image.height);
+        
+        // Label UV mapping area dimensions (from canvas size)
+        const LABEL_UV_WIDTH = 2081;
+        const LABEL_UV_HEIGHT = 544;
+        const LABEL_UV_ASPECT = LABEL_UV_WIDTH / LABEL_UV_HEIGHT; // ≈ 3.827
+        
+        // Get image dimensions
+        const imageWidth = image.width;
+        const imageHeight = image.height;
+        const imageAspect = imageWidth / imageHeight;
+        
+        // Configure texture properties - set these BEFORE calculating repeat/offset
+        texture.flipY = false;
+        // Use ClampToEdgeWrapping to prevent texture bleeding
+        texture.wrapS = THREE.ClampToEdgeWrapping;
+        texture.wrapT = THREE.ClampToEdgeWrapping;
+        
+        // Calculate repeat and offset to fit image to UV mapping
+        let repeatX: number;
+        let repeatY: number;
+        let offsetX: number;
+        let offsetY: number;
+        
+        if (imageAspect > LABEL_UV_ASPECT) {
+          // Image is wider than UV area - scale to fit height, crop width
+          repeatY = 1.0; // Full height
+          repeatX = imageAspect / LABEL_UV_ASPECT; // Scale width proportionally
+          offsetX = (1 - repeatX) / 2; // Center horizontally
+          offsetY = 0; // No vertical offset
+        } else {
+          // Image is taller than UV area - scale to fit width, crop height
+          repeatX = 1.0; // Full width
+          repeatY = LABEL_UV_ASPECT / imageAspect; // Scale height proportionally
+          offsetX = 0; // No horizontal offset
+          offsetY = (1 - repeatY) / 2; // Center vertically
+        }
+        
+        texture.repeat.set(repeatX, repeatY);
+        texture.offset.set(offsetX, offsetY);
+        
+        // Use high-quality filtering for crisp images (set AFTER repeat/offset)
+        texture.minFilter = THREE.LinearMipmapLinearFilter;
+        texture.magFilter = THREE.LinearFilter;
+        texture.generateMipmaps = true;
+        texture.anisotropy = 16; // Maximum anisotropy for sharp textures
+        
+        console.log('Texture mapping applied:', {
+          imageSize: `${imageWidth}x${imageHeight}`,
+          imageAspect: imageAspect.toFixed(2),
+          uvAspect: LABEL_UV_ASPECT.toFixed(2),
+          repeat: `${repeatX.toFixed(3)}, ${repeatY.toFixed(3)}`,
+          offset: `${offsetX.toFixed(3)}, ${offsetY.toFixed(3)}`
+        });
+        
+        if (labelRef.current) {
+          const geometry = labelRef.current.geometry;
+          
+          // Create new material preserving original properties if available
+          const originalMaterial = labelOriginalMaterialRef.current;
+          const newMaterial = originalMaterial instanceof THREE.MeshStandardMaterial
+            ? originalMaterial.clone()
+            : new THREE.MeshStandardMaterial();
+          
+          // Apply texture to material with enhanced contrast settings
+          if (newMaterial instanceof THREE.MeshStandardMaterial) {
+            newMaterial.map = texture;
+            newMaterial.roughness = 0.3; // Lower roughness for more reflective/crisp look
+            newMaterial.metalness = 0.1; // Slight metalness for better definition
+            newMaterial.side = THREE.DoubleSide; // Make label visible from both sides
+            // Ensure material is visible and not transparent
+            newMaterial.transparent = false;
+            newMaterial.opacity = 1.0;
+            newMaterial.needsUpdate = true;
+            const textureImage = newMaterial.map?.image;
+            const imageSrc = textureImage && textureImage instanceof HTMLImageElement
+              ? textureImage.src?.substring(0, 100)
+              : 'N/A';
+            
+            console.log('[Label Texture] Material properties set:', {
+              hasTexture: !!newMaterial.map,
+              textureImage: imageSrc,
+              side: newMaterial.side,
+              roughness: newMaterial.roughness,
+              metalness: newMaterial.metalness,
+              opacity: newMaterial.opacity,
+              transparent: newMaterial.transparent,
+              needsUpdate: newMaterial.needsUpdate
+            });
+          }
+          
+          console.log('[Label Texture] Applying material to mesh...');
+          labelRef.current.material = newMaterial;
+          
+          // Force update the label mesh
+          if (labelRef.current) {
+            console.log('[Label Texture] Updating mesh matrices...');
+            labelRef.current.updateMatrix();
+            labelRef.current.updateMatrixWorld(true);
+          }
+          
+          // Ensure geometry UVs are updated - CRITICAL for texture to show
+          if (geometry && geometry.attributes.uv) {
+            console.log('[Label Texture] Updating UV attributes...');
+            geometry.attributes.uv.needsUpdate = true;
+            geometry.computeBoundingBox();
+            console.log('[Label Texture] UV update complete, bounding box computed');
+          } else {
+            console.warn('[Label Texture] No UV attribute found on geometry!');
+          }
+          
+          labelRef.current.visible = true;
+          console.log('[Label Texture] ✅ Label material applied successfully to mesh:', {
+            meshName: labelRef.current.name,
+            visible: labelRef.current.visible,
+            materialType: labelRef.current.material?.constructor?.name,
+            hasTexture: !!(labelRef.current.material as any)?.map
+          });
+        }
+      } catch (err) {
+        console.error('Error creating texture from image:', err);
+        // Reset to original material on error
+        if (labelRef.current && labelOriginalMaterialRef.current) {
+          labelRef.current.material = labelOriginalMaterialRef.current;
+        }
+      }
+    };
+    
+    // Determine URL type
+    const isDataUrl = labelImage.startsWith('data:');
+    const isExternalUrl = labelImage.startsWith('http://') || labelImage.startsWith('https://');
+    const isSameOrigin = isExternalUrl && typeof window !== 'undefined' && 
+                         (labelImage.startsWith(window.location.origin) || 
+                          labelImage.startsWith('/'));
+    
+    // Use TextureLoader directly (same as Bottle3D) - it handles CORS better
+    // Don't set crossOrigin - let TextureLoader handle it internally
+    console.log('[Label Texture] Creating TextureLoader and starting load...');
+    const loader = new THREE.TextureLoader();
+    
+    loader.load(
+      labelImage,
+      (texture) => {
+        console.log('[Label Texture] TextureLoader load success callback triggered');
+        
+        if (!labelRef.current) {
+          console.warn('[Label Texture] Label ref not available when texture loaded');
+          return;
+        }
+        
+        console.log('[Label Texture] Texture loaded successfully', {
+          hasImage: !!texture.image,
+          imageWidth: texture.image?.width,
+          imageHeight: texture.image?.height,
+          imageSrc: texture.image?.src?.substring(0, 100)
+        });
+        
+        try {
+          // Label UV mapping area dimensions (from canvas size)
+          const LABEL_UV_WIDTH = 2081;
+          const LABEL_UV_HEIGHT = 544;
+          const LABEL_UV_ASPECT = LABEL_UV_WIDTH / LABEL_UV_HEIGHT; // ≈ 3.827
+          
+          // Get image dimensions
+          const imageWidth = texture.image.width;
+          const imageHeight = texture.image.height;
+          const imageAspect = imageWidth / imageHeight;
+          
+          // Configure texture properties
+          texture.flipY = false;
+          texture.wrapS = THREE.ClampToEdgeWrapping;
+          texture.wrapT = THREE.ClampToEdgeWrapping;
+          
+          // Calculate repeat and offset to fit image to UV mapping
+          let repeatX: number;
+          let repeatY: number;
+          let offsetX: number;
+          let offsetY: number;
+          
+          if (imageAspect > LABEL_UV_ASPECT) {
+            repeatY = 1.0;
+            repeatX = imageAspect / LABEL_UV_ASPECT;
+            offsetX = (1 - repeatX) / 2;
+            offsetY = 0;
+          } else {
+            repeatX = 1.0;
+            repeatY = LABEL_UV_ASPECT / imageAspect;
+            offsetX = 0;
+            offsetY = (1 - repeatY) / 2;
+          }
+          
+          texture.repeat.set(repeatX, repeatY);
+          texture.offset.set(offsetX, offsetY);
+          
+          // Use high-quality filtering
+          texture.minFilter = THREE.LinearMipmapLinearFilter;
+          texture.magFilter = THREE.LinearFilter;
+          texture.generateMipmaps = true;
+          texture.anisotropy = 16;
+          
+          console.log('[Label Texture] Texture mapping calculated:', {
+            imageSize: `${imageWidth}x${imageHeight}`,
+            imageAspect: imageAspect.toFixed(2),
+            uvAspect: LABEL_UV_ASPECT.toFixed(2),
+            repeat: `${repeatX.toFixed(3)}, ${repeatY.toFixed(3)}`,
+            offset: `${offsetX.toFixed(3)}, ${offsetY.toFixed(3)}`
+          });
+          
+          const geometry = labelRef.current.geometry;
+          console.log('[Label Texture] Geometry info:', {
+            hasGeometry: !!geometry,
+            hasUvAttribute: !!(geometry && geometry.attributes.uv),
+            uvCount: geometry?.attributes.uv?.count
+          });
+          const originalMaterial = labelOriginalMaterialRef.current;
+          const newMaterial = originalMaterial instanceof THREE.MeshStandardMaterial
+            ? originalMaterial.clone()
+            : new THREE.MeshStandardMaterial();
+          
+          if (newMaterial instanceof THREE.MeshStandardMaterial) {
+            newMaterial.map = texture;
+            newMaterial.roughness = 0.3;
+            newMaterial.metalness = 0.1;
+            newMaterial.side = THREE.DoubleSide;
+            newMaterial.transparent = false;
+            newMaterial.opacity = 1.0;
+            newMaterial.needsUpdate = true;
+            
+            console.log('Label texture applied to material:', {
+              hasTexture: !!newMaterial.map,
+              side: newMaterial.side,
+              labelPosition: labelRef.current?.position,
+              labelRotation: labelRef.current?.rotation
+            });
+          }
+          
+          labelRef.current.material = newMaterial;
+          
+          // Force update the label mesh
+          labelRef.current.updateMatrix();
+          labelRef.current.updateMatrixWorld(true);
+          
+          // Ensure geometry UVs are updated - CRITICAL for texture to show
+          if (geometry && geometry.attributes.uv) {
+            geometry.attributes.uv.needsUpdate = true;
+            geometry.computeBoundingBox();
+          }
+          
+          labelRef.current.visible = true;
+          console.log('Label material applied successfully to mesh:', labelRef.current.name);
+        } catch (err) {
+          console.error('[Label Texture] ❌ Error applying texture:', {
+            error: err,
+            errorMessage: err instanceof Error ? err.message : String(err),
+            errorStack: err instanceof Error ? err.stack : undefined,
+            labelRefExists: !!labelRef.current
+          });
+          if (labelRef.current && labelOriginalMaterialRef.current) {
+            console.log('[Label Texture] Resetting to original material due to error');
+            labelRef.current.material = labelOriginalMaterialRef.current;
+          }
+        }
+      },
+      (progress) => {
+        console.log('[Label Texture] Texture loading progress:', progress);
+      },
+      (error) => {
+        console.error('[Label Texture] ❌ TextureLoader error callback:', {
+          error,
+          errorType: error?.constructor?.name,
+          errorMessage: (error instanceof Error ? error.message : String(error)) || 'Unknown error',
+          url: labelImage.substring(0, 100)
+        });
+        if (labelRef.current && labelOriginalMaterialRef.current) {
+          console.log('[Label Texture] Resetting to original material due to load error');
+          labelRef.current.material = labelOriginalMaterialRef.current;
+        }
+      }
+    );
+  }, [labelImage, isLoaded]);
 
   return <primitive object={gltf.scene} />;
 }
@@ -210,7 +546,8 @@ export default function BottleMultiAngleView({
   // Set background color based on theme
   const backgroundColor = theme === 'dark' ? '#000000' : '#f5f5f5'; // Black for dark, soft white for light
   
-  if (!labelImage) {
+  // Validate labelImage before rendering
+  if (!labelImage || typeof labelImage !== 'string' || labelImage.trim() === '') {
     return (
       <div className="text-center py-8" style={{ color: 'var(--text-muted)' }}>
         <p>No label image available</p>

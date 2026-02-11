@@ -6,51 +6,42 @@ const saveDesign = async (req, res) => {
   try {
     const { design_json, label_image, print_pdf, bottle_snapshot, is_draft, design_id } = req.body;
 
-    // Upload images to S3 if they are base64 data URLs
-    let s3Urls = {
-      label_image: label_image,
-      print_pdf: print_pdf,
-      bottle_snapshot: bottle_snapshot,
-    };
-
-    // Only upload if we have base64 images (not already S3 URLs)
+    // Check if images are base64 (from localStorage) or S3 URLs (already uploaded)
     const hasBase64Images = 
       (label_image && label_image.startsWith('data:')) ||
       (print_pdf && print_pdf.startsWith('data:')) ||
       (bottle_snapshot && bottle_snapshot.startsWith('data:'));
 
-    if (hasBase64Images) {
-      try {
-        const uploadedUrls = await uploadDesignImages({
-          label_image,
-          print_pdf,
-          bottle_snapshot,
-        });
-        s3Urls = { ...s3Urls, ...uploadedUrls };
-      } catch (uploadError) {
-        console.error('S3 upload error:', uploadError);
-        return res.status(500).json({ 
-          message: 'Failed to upload images to S3', 
-          error: uploadError.message 
-        });
-      }
+    // If images are base64, DO NOT store them in database
+    // They will remain in localStorage until payment is confirmed
+    // Only store S3 URLs in database (after payment)
+    let imageUrls = {};
+    
+    if (!hasBase64Images) {
+      // Images are already S3 URLs, store them
+      imageUrls = {
+        ...(label_image && { label_image }),
+        ...(print_pdf && { print_pdf }),
+        ...(bottle_snapshot && { bottle_snapshot }),
+      };
     }
+    // If hasBase64Images is true, don't store images - they stay in localStorage
 
     if (design_id) {
       // Get existing design to delete old S3 files if needed
-      const existingDesign = await Design.findById(design_id);
+      const existingDesign = await Design.findById(design_id).maxTimeMS(15000);
       
-      // Update existing design
+      // Update existing design - only update images if they are S3 URLs
+      const updateData = {
+        design_json,
+        is_draft,
+        ...imageUrls, // Only include if images are S3 URLs
+      };
+
       const design = await Design.findByIdAndUpdate(
         design_id,
-        {
-          design_json,
-          label_image: s3Urls.label_image,
-          print_pdf: s3Urls.print_pdf,
-          bottle_snapshot: s3Urls.bottle_snapshot,
-          is_draft
-        },
-        { new: true }
+        updateData,
+        { new: true, maxTimeMS: 15000 }
       );
 
       if (!design) {
@@ -59,30 +50,51 @@ const saveDesign = async (req, res) => {
 
       // Delete old S3 files if they were replaced with new uploads
       if (existingDesign) {
-        if (existingDesign.label_image && existingDesign.label_image !== s3Urls.label_image) {
+        if (existingDesign.label_image && imageUrls.label_image && 
+            existingDesign.label_image !== imageUrls.label_image &&
+            existingDesign.label_image.startsWith('http')) {
           await deleteFromS3(existingDesign.label_image);
         }
-        if (existingDesign.print_pdf && existingDesign.print_pdf !== s3Urls.print_pdf) {
+        if (existingDesign.print_pdf && imageUrls.print_pdf && 
+            existingDesign.print_pdf !== imageUrls.print_pdf &&
+            existingDesign.print_pdf.startsWith('http')) {
           await deleteFromS3(existingDesign.print_pdf);
         }
-        if (existingDesign.bottle_snapshot && existingDesign.bottle_snapshot !== s3Urls.bottle_snapshot) {
+        if (existingDesign.bottle_snapshot && imageUrls.bottle_snapshot &&
+            existingDesign.bottle_snapshot !== imageUrls.bottle_snapshot &&
+            existingDesign.bottle_snapshot.startsWith('http')) {
           await deleteFromS3(existingDesign.bottle_snapshot);
         }
       }
 
-      return res.json(design);
+      // Return design with images from request if they are base64 (for frontend to keep in localStorage)
+      const responseDesign = design.toObject();
+      if (hasBase64Images) {
+        responseDesign.label_image = label_image;
+        responseDesign.print_pdf = print_pdf;
+        responseDesign.bottle_snapshot = bottle_snapshot;
+      }
+
+      return res.json(responseDesign);
     } else {
-      // Create new design
+      // Create new design - only store images if they are S3 URLs
       const design = new Design({
         design_json,
-        label_image: s3Urls.label_image,
-        print_pdf: s3Urls.print_pdf,
-        bottle_snapshot: s3Urls.bottle_snapshot,
+        ...imageUrls, // Only include if images are S3 URLs
         is_draft: is_draft || false
       });
 
       await design.save();
-      res.status(201).json(design);
+
+      // Return design with images from request if they are base64 (for frontend to keep in localStorage)
+      const responseDesign = design.toObject();
+      if (hasBase64Images) {
+        responseDesign.label_image = label_image;
+        responseDesign.print_pdf = print_pdf;
+        responseDesign.bottle_snapshot = bottle_snapshot;
+      }
+
+      res.status(201).json(responseDesign);
     }
   } catch (error) {
     console.error('Error saving design:', error);
@@ -94,13 +106,26 @@ const saveDesign = async (req, res) => {
 const getAllDesigns = async (req, res) => {
   try {
     // Use allowDiskUse to handle large sorts, and limit results for performance
+    // Add maxTimeMS to prevent queries from hanging indefinitely
     const designs = await Design.find()
       .sort({ createdAt: -1 })
       .allowDiskUse(true)
-      .limit(1000); // Limit to prevent memory issues
+      .limit(1000) // Limit to prevent memory issues
+      .maxTimeMS(25000); // Timeout after 25 seconds
+    
     res.json(designs);
   } catch (error) {
     console.error('Error fetching designs:', error);
+    
+    // Provide more specific error messages
+    if (error.name === 'MongoNetworkTimeoutError' || error.name === 'MongoServerSelectionError') {
+      return res.status(503).json({ 
+        message: 'Database connection timeout. Please try again later.',
+        error: 'Service Unavailable',
+        retry: true
+      });
+    }
+    
     res.status(500).json({ message: error.message });
   }
 };
@@ -108,7 +133,7 @@ const getAllDesigns = async (req, res) => {
 // Get single design
 const getDesign = async (req, res) => {
   try {
-    const design = await Design.findById(req.params.id);
+    const design = await Design.findById(req.params.id).maxTimeMS(15000);
 
     if (!design) {
       return res.status(404).json({ message: 'Design not found' });
@@ -116,6 +141,13 @@ const getDesign = async (req, res) => {
 
     res.json(design);
   } catch (error) {
+    if (error.name === 'MongoNetworkTimeoutError' || error.name === 'MongoServerSelectionError') {
+      return res.status(503).json({ 
+        message: 'Database connection timeout. Please try again later.',
+        error: 'Service Unavailable',
+        retry: true
+      });
+    }
     res.status(500).json({ message: error.message });
   }
 };

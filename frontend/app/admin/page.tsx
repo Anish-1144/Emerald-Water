@@ -19,7 +19,7 @@ export default function AdminPage() {
   }, [router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
+    <div className="min-h-screen flex items-center justify-center " style={{ backgroundColor: 'var(--background)' }}>
       <div className="text-lg" style={{ color: 'var(--text-primary)' }}>Redirecting...</div>
     </div>
   );

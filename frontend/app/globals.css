@@ -14,7 +14,7 @@
 }
 
 html.light {
-  --background: #f5f7fa; /* Ice white - softer than pure white */
+  --background: #ededed; /* Light theme background */
   --foreground: #1a1a1a;
   --card-bg: #f0f4f8; /* Light ice white shade */
   --border-color: rgba(0, 0, 0, 0.08); /* Softer border */

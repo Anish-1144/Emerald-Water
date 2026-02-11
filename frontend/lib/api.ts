@@ -112,5 +112,13 @@ export const adminAPI = {
       headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
     });
   },
+  changePassword: (currentPassword: string, newPassword: string) => {
+    const adminToken = typeof window !== 'undefined' ? localStorage.getItem('adminToken') : null;
+    return request('/admin/change-password', {
+      method: 'PUT',
+      headers: adminToken ? { Authorization: `Bearer ${adminToken}` } : {},
+      body: JSON.stringify({ currentPassword, newPassword }),
+    });
+  },
 };
 

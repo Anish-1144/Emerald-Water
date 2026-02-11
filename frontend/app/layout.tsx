@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
 import "./globals.css";
 import ThemeProvider from "@/components/ThemeProvider";
+import { LoadingProvider } from "@/components/LoadingContext";
 
 const poppins = Poppins({
   weight: ['300', '400', '500', '600', '700'],
@@ -40,7 +41,9 @@ export default function RootLayout({
         className={`${poppins.variable} font-sans antialiased`}
       >
         <ThemeProvider>
-          {children}
+          <LoadingProvider>
+            {children}
+          </LoadingProvider>
         </ThemeProvider>
       </body>
     </html>

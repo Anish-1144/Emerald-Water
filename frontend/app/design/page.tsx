@@ -13,6 +13,7 @@ import Footer from '@/components/Footer';
 import DesignPanel from '@/components/DesignPanel';
 import ImageCropModal from '@/components/ui/ImageCropModal';
 import { calculateOrderPrice, MINIMUM_BOTTLES, hexToCapColor, type CapColor } from '@/lib/pricing';
+import { useLoading } from '@/components/LoadingContext';
 
 export default function DesignPage() {
   const router = useRouter();
@@ -20,20 +21,40 @@ export default function DesignPage() {
   const { capColor, setCapColor, labelTexture, setLabelTexture } = useDesignStore();
   const { addToCart, items: cartItems } = useCartStore();
   const { exportCanvas: exportLabelCanvas, elements: labelEditorElements } = useLabelEditorStore();
+  const { setLoading } = useLoading();
   const [activeTab, setActiveTab] = useState<string | null>('label-design');
   // Track the current design mode to ensure proper state management
   const [designMode, setDesignMode] = useState<'uploaded' | 'designed' | null>(null);
+  const [labelData, setLabelData] = useState({
+    text: '',
+    fontSize: 24,
+    fontFamily: 'Arial',
+    textColor: '#000000',
+    backgroundColor: '#ffffff',
+    backgroundType: 'solid' as 'solid' | 'gradient',
+    gradientStart: '#ffffff',
+    gradientEnd: '#ffffff',
+    image: null as string | null,
+    imagePosition: { x: 0, y: 0 },
+    imageSize: { width: 200, height: 200 },
+    imageRotation: 0,
+  });
 
   // Check for pending tab from navigation (e.g., from orders page)
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const pendingTab = sessionStorage.getItem('pendingTab');
       if (pendingTab) {
+        setLoading(true);
         setActiveTab(pendingTab);
         sessionStorage.removeItem('pendingTab');
+        // Hide loading after tab change completes
+        setTimeout(() => {
+          setLoading(false);
+        }, 300);
       }
     }
-  }, []);
+  }, [setLoading]);
 
   // Handle tab changes - reset state when switching tabs
   useEffect(() => {
@@ -54,27 +75,23 @@ export default function DesignPage() {
       setLabelTexture(null);
     } else if (activeTab === 'label-design') {
       // When switching to Label Design tab: clear uploaded image
-      if (labelData.image) {
-        setLabelData({ ...labelData, image: null });
-      }
+      setLabelData(prev => {
+        if (prev.image) {
+          return { ...prev, image: null };
+        }
+        return prev;
+      });
       // Reset design mode
       setDesignMode(null);
     }
-  }, [activeTab]);
-  const [labelData, setLabelData] = useState({
-    text: '',
-    fontSize: 24,
-    fontFamily: 'Arial',
-    textColor: '#000000',
-    backgroundColor: '#ffffff',
-    backgroundType: 'solid' as 'solid' | 'gradient',
-    gradientStart: '#ffffff',
-    gradientEnd: '#ffffff',
-    image: null as string | null,
-    imagePosition: { x: 0, y: 0 },
-    imageSize: { width: 200, height: 200 },
-    imageRotation: 0,
-  });
+    
+    // Hide loading after tab change effects complete
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 200);
+    
+    return () => clearTimeout(timer);
+  }, [activeTab, setLoading, setLabelTexture]);
   const [showColorPicker, setShowColorPicker] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showCropModal, setShowCropModal] = useState(false);
@@ -380,7 +397,16 @@ export default function DesignPage() {
       <Header />
       
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        <Sidebar 
+          activeTab={activeTab} 
+          onTabChange={(tab) => {
+            // Show loading when tab changes
+            if (tab !== activeTab) {
+              setLoading(true);
+            }
+            setActiveTab(tab);
+          }} 
+        />
         
         {activeTab && (
           <DesignPanel

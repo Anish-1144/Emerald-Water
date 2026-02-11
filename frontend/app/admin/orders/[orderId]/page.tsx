@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import AdminSidebar from '@/components/AdminSidebar';
+import AdminHeader from '@/components/AdminHeader';
+import { AdminSidebarProvider } from '@/components/AdminSidebarContext';
 import { adminAPI } from '@/lib/api';
 import OrderDetails from '@/components/OrderDetails';
 
@@ -17,6 +19,12 @@ export default function AdminOrderPage() {
   const [orderLoading, setOrderLoading] = useState(false);
 
   useEffect(() => {
+    // Force light theme for admin dashboard
+    if (typeof window !== 'undefined') {
+      document.documentElement.classList.remove('dark');
+      document.documentElement.classList.add('light');
+    }
+
     // Check if admin is logged in
     if (typeof window !== 'undefined') {
       const adminToken = localStorage.getItem('adminToken');
@@ -81,36 +89,40 @@ export default function AdminOrderPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
-        <div className="text-lg" style={{ color: 'var(--text-primary)' }}>Loading...</div>
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#ededed' }}>
+        <div className="text-lg text-gray-700">Loading...</div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ backgroundColor: 'var(--background)' }}>
-      <AdminSidebar 
-        orders={orders} 
-        selectedOrderId={orderId}
-        onOrderSelect={handleOrderSelect}
-      />
-      
-      <main className="flex-1 overflow-y-auto">
-        {selectedOrder ? (
-          <OrderDetails 
-            order={selectedOrder} 
-            onStatusUpdate={handleStatusUpdate}
-            loading={orderLoading}
-          />
-        ) : (
-          <div className="p-8 flex items-center justify-center min-h-screen">
-            <div className="text-lg" style={{ color: 'var(--text-primary)' }}>Loading order details...</div>
-          </div>
-        )}
-      </main>
+    <AdminSidebarProvider>
+      <div className="flex h-screen overflow-hidden" style={{ backgroundColor: '#ededed' }}>
+        <AdminSidebar />
+        
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <AdminHeader />
+        
+        <main className="flex-1 overflow-y-auto" style={{ backgroundColor: '#ededed' }}>
+          {selectedOrder ? (
+            <OrderDetails 
+              order={selectedOrder} 
+              onStatusUpdate={handleStatusUpdate}
+              loading={orderLoading}
+            />
+          ) : (
+            <div className="p-8 flex items-center justify-center min-h-screen">
+              <div className="text-lg text-gray-700">Loading order details...</div>
+            </div>
+          )}
+        </main>
+      </div>
     </div>
+    </AdminSidebarProvider>
   );
 }
+
+
 
 
 

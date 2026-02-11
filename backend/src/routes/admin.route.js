@@ -6,7 +6,8 @@ const {
   getDashboardStats,
   getAllOrders,
   updateOrderStatus,
-  getOrderDetails
+  getOrderDetails,
+  changePassword
 } = require('../controllers/admin.controller');
 
 // Public route - admin login
@@ -17,6 +18,7 @@ router.get('/dashboard', adminAuth, getDashboardStats);
 router.get('/orders', adminAuth, getAllOrders);
 router.get('/orders/:id', adminAuth, getOrderDetails);
 router.put('/orders/:id/status', adminAuth, updateOrderStatus);
+router.put('/change-password', adminAuth, changePassword);
 
 module.exports = router;
 

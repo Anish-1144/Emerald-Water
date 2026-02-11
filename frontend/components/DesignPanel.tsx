@@ -971,14 +971,15 @@ export default function DesignPanel({
                       </div>
 
                       <div 
-                        className="border rounded-xl p-4 transition-colors"
+                        className="border rounded-lg p-4 transition-colors"
                         style={{ 
-                          backgroundColor: 'rgba(234, 179, 8, 0.1)', 
-                          borderColor: 'rgba(234, 179, 8, 0.3)'
+                          backgroundColor: '#fef9c3',
+                          borderColor: '#fde047',
+                          color: '#ca8a04'
                         }}
                       >
-                        <p className="text-sm leading-relaxed" style={{ color: '#fbbf24' }}>
-                          <strong style={{ color: '#fde047' }}>Note:</strong> Payment integration is not implemented yet. Orders will be marked as successful for testing purposes.
+                        <p className="text-sm leading-relaxed">
+                          <strong>Note:</strong> Payment integration is not implemented yet. Orders will be marked as successful for testing purposes.
                         </p>
                       </div>
 
