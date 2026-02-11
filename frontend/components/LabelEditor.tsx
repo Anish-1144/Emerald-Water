@@ -207,7 +207,8 @@ export default function LabelEditor({ onExport }: LabelEditorProps) {
       ctx.setLineDash([]);
 
       // Draw resize handles
-      const handleSize = 8 / displayScale;
+      // Visual size: 14 / displayScale screen pixels = 14 canvas units
+      const handleSize = 14 / displayScale;
       const centerX = (selectedElement.x + selectedElement.width / 2) * displayScale;
       const centerY = (selectedElement.y + selectedElement.height / 2) * displayScale;
       const rotation = (selectedElement.rotation * Math.PI) / 180;
@@ -277,9 +278,13 @@ export default function LabelEditor({ onExport }: LabelEditorProps) {
     const canvasX = (e.clientX - rect.left) / displayScale;
     const canvasY = (e.clientY - rect.top) / displayScale;
 
-    // Check if clicking on a resize handle
-    if (selectedElement) {
-      const handle = getResizeHandle(canvasX, canvasY, selectedElement);
+      // Check if clicking on a resize handle
+      if (selectedElement) {
+        // Use handle size that matches visual size in canvas coordinates
+        // Visual handle is 14/displayScale screen pixels = 14 canvas units
+        // Add 1.5x multiplier for easier grabbing
+        const handleHitSize = 14 * 1.5; // 21 canvas units to match visual + easier grabbing
+        const handle = getResizeHandle(canvasX, canvasY, selectedElement, handleHitSize);
       if (handle) {
         if (handle === 'rotate') {
           setIsRotating(true);
@@ -320,7 +325,9 @@ export default function LabelEditor({ onExport }: LabelEditorProps) {
 
     // Update cursor
     if (!isDragging && !isResizing && !isRotating && selectedElement) {
-      const handle = getResizeHandle(canvasX, canvasY, selectedElement);
+      // Use handle size that matches visual size in canvas coordinates
+      const handleHitSize = 14 * 1.5; // 21 canvas units to match visual + easier grabbing
+      const handle = getResizeHandle(canvasX, canvasY, selectedElement, handleHitSize);
       setHoverHandle(handle);
       if (handle) {
         canvasRef.current!.style.cursor = getCursorForHandle(handle);

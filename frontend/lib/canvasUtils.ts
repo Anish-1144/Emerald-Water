@@ -57,7 +57,7 @@ export function getResizeHandle(
   x: number,
   y: number,
   element: LabelElement,
-  handleSize: number = 5
+  handleSize: number = 21 // Default: 14 visual size * 1.5 for easier grabbing = 21 canvas units
 ): 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w' | 'rotate' | null {
   const centerX = element.x + element.width / 2;
   const centerY = element.y + element.height / 2;
@@ -84,8 +84,8 @@ export function getResizeHandle(
     return 'rotate';
   }
 
-  // Check corner handles - use slightly larger threshold for easier clicking
-  const handleThreshold = handleSize * 1.2; // 1.2x for easier clicking on smaller handles
+  // Check corner handles - handleSize already includes the multiplier, so use it directly
+  const handleThreshold = handleSize; // handleSize already accounts for visual size + grab area
 
   // Northwest
   if (

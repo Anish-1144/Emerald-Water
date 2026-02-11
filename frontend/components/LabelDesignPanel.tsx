@@ -8,6 +8,7 @@ import {
 import FigmaColorPicker from '@/components/ui/FigmaColorPicker';
 import LabelEditorModal from '@/components/LabelEditorModal';
 import LabelElementInspector from '@/components/LabelElementInspector';
+import CapColorSelector from '@/components/ui/CapColorSelector';
 import {
   Type,
   Image as ImageIcon,
@@ -280,118 +281,10 @@ export default function LabelDesignPanel({
         className="p-4 border-b transition-colors"
         style={{ borderColor: 'var(--border-color)' }}
       >
-        <label 
-          className="block text-sm font-medium mb-3 transition-colors"
-          style={{ color: 'var(--text-secondary)' }}
-        >
-          Cap Color
-        </label>
-        <div className="flex items-center gap-4">
-          <div
-            className="w-16 h-16 rounded-lg border-2 cursor-pointer shadow-lg hover:scale-105 transition-transform"
-            style={{ 
-              backgroundColor: capColor,
-              borderColor: 'var(--border-color)'
-            }}
-            onClick={() => setShowColorPicker(showColorPicker === 'cap' ? null : 'cap')}
-          />
-          <div className="flex-1">
-            <p 
-              className="text-xs mb-1 transition-colors"
-              style={{ color: 'var(--text-muted)' }}
-            >
-              Click to change cap color
-            </p>
-            <p 
-              className="text-sm font-mono transition-colors"
-              style={{ color: 'var(--text-primary)' }}
-            >
-              {capColor.toUpperCase()}
-            </p>
-            {(() => {
-              const capColorType = hexToCapColor(capColor);
-              const price = getCapColorPrice(capColorType);
-              const capColorOptions = getCapColorOptions();
-              const selectedOption = capColorOptions.find(opt => opt.value === capColorType);
-              
-              return (
-                <p 
-                  className="text-xs mt-1 transition-colors font-medium"
-                  style={{ 
-                    color: price > 0 ? '#4DB64F' : 'var(--text-muted)'
-                  }}
-                >
-                  {price === 0 
-                    ? 'Free (White caps included)' 
-                    : `+$${price.toFixed(2)} per bottle`}
-                </p>
-              );
-            })()}
-          </div>
-        </div>
-        {showColorPicker === 'cap' && (
-          <div className="mt-4">
-            <FigmaColorPicker
-              color={capColor}
-              onChange={handleCapColorChange}
-            />
-            {/* Show pricing information */}
-            <div 
-              className="mt-4 p-3 rounded-lg border transition-colors"
-              style={{ 
-                backgroundColor: 'var(--card-bg)',
-                borderColor: 'var(--border-color)'
-              }}
-            >
-              <p 
-                className="text-xs font-semibold mb-2 transition-colors"
-                style={{ color: 'var(--text-secondary)' }}
-              >
-                Cap Color Pricing:
-              </p>
-              <div className="space-y-1">
-                {getCapColorOptions().map((option) => {
-                  const isSelected = hexToCapColor(capColor) === option.value;
-                  return (
-                    <div 
-                      key={option.value}
-                      className={`flex justify-between text-xs p-2 rounded transition-colors ${
-                        isSelected ? 'bg-[#4DB64F]/20' : ''
-                      }`}
-                      style={{ 
-                        color: isSelected ? 'var(--text-primary)' : 'var(--text-secondary)'
-                      }}
-                    >
-                      <span className="capitalize">{option.label}</span>
-                      <span 
-                        className="font-medium"
-                        style={{ 
-                          color: option.price > 0 ? '#4DB64F' : 'var(--text-muted)'
-                        }}
-                      >
-                        {option.price === 0 ? 'Free' : `+$${option.price.toFixed(2)}/bottle`}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-              <p 
-                className="text-xs mt-3 pt-2 border-t transition-colors"
-                style={{ 
-                  color: 'var(--text-muted)',
-                  borderColor: 'var(--border-color)'
-                }}
-              >
-                Current selection: {hexToCapColor(capColor).charAt(0).toUpperCase() + hexToCapColor(capColor).slice(1)} 
-                {getCapColorPrice(hexToCapColor(capColor)) > 0 && (
-                  <span className="text-[#4DB64F] font-medium">
-                    {' '}(+${getCapColorPrice(hexToCapColor(capColor)).toFixed(2)}/bottle)
-                  </span>
-                )}
-              </p>
-            </div>
-          </div>
-        )}
+        <CapColorSelector
+          selectedColor={capColor}
+          onColorChange={handleCapColorChange}
+        />
       </div>
 
       {/* Canvas Preview */}

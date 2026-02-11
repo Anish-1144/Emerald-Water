@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://api.emeraldwater.ca/api';
 
 async function request(endpoint: string, options: RequestInit = {}) {
   // Check for admin token first, then order token, then regular token

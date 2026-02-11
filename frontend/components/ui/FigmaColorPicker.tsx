@@ -246,12 +246,19 @@ export default function FigmaColorPicker({ color, onChange, disableAlpha = true 
   };
 
   return (
-    <div className="bg-[#2A2A2A] rounded-xl p-4 border border-[#4DB64F]/30 shadow-xl w-full max-w-sm">
+    <div 
+      className="rounded-xl p-4 border shadow-xl w-full max-w-sm transition-colors"
+      style={{
+        backgroundColor: 'var(--card-bg)',
+        borderColor: 'var(--border-color)'
+      }}
+    >
       {/* Color Spectrum */}
       <div className="mb-4">
         <div
           ref={spectrumRef}
-          className="w-full h-48 rounded-lg cursor-crosshair relative overflow-hidden border border-white/20"
+          className="w-full h-48 rounded-lg cursor-crosshair relative overflow-hidden border transition-colors"
+          style={{ borderColor: 'var(--border-color)' }}
           style={spectrumStyle}
           onMouseDown={(e) => {
             setIsDraggingSpectrum(true);
@@ -273,7 +280,8 @@ export default function FigmaColorPicker({ color, onChange, disableAlpha = true 
       <div className="mb-4">
         <div
           ref={hueRef}
-          className="w-full h-6 rounded-md cursor-pointer relative overflow-hidden border border-white/20"
+          className="w-full h-6 rounded-md cursor-pointer relative overflow-hidden border transition-colors"
+          style={{ borderColor: 'var(--border-color)' }}
           style={{ background: hueGradient }}
           onMouseDown={(e) => {
             setIsDraggingHue(true);
@@ -293,53 +301,80 @@ export default function FigmaColorPicker({ color, onChange, disableAlpha = true 
       {/* RGB Inputs */}
       <div className="grid grid-cols-3 gap-2 mb-3">
         <div>
-          <label className="block text-xs font-medium text-[#4DB64F] mb-1">R</label>
+          <label className="block text-xs font-medium mb-1 transition-colors" style={{ color: 'var(--text-secondary)' }}>R</label>
           <input
             type="number"
             min="0"
             max="255"
             value={rgb.r}
             onChange={(e) => handleRgbChange('r', parseInt(e.target.value) || 0)}
-            className="w-full px-2 py-1.5 bg-[#1E1E1E] border border-[#4DB64F]/50 rounded-md text-[#4DB64F] text-sm focus:outline-none focus:ring-2 focus:ring-[#4DB64F] focus:border-[#4DB64F] transition-all"
+            className="w-full px-2 py-1.5 rounded-md text-sm focus:outline-none focus:ring-2 transition-all"
+            style={{
+              backgroundColor: 'var(--input-bg)',
+              borderColor: 'var(--input-border)',
+              color: 'var(--text-primary)',
+              focusRingColor: '#4DB64F'
+            }}
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-[#4DB64F] mb-1">G</label>
+          <label className="block text-xs font-medium mb-1 transition-colors" style={{ color: 'var(--text-secondary)' }}>G</label>
           <input
             type="number"
             min="0"
             max="255"
             value={rgb.g}
             onChange={(e) => handleRgbChange('g', parseInt(e.target.value) || 0)}
-            className="w-full px-2 py-1.5 bg-[#1E1E1E] border border-[#4DB64F]/50 rounded-md text-[#4DB64F] text-sm focus:outline-none focus:ring-2 focus:ring-[#4DB64F] focus:border-[#4DB64F] transition-all"
+            className="w-full px-2 py-1.5 rounded-md text-sm focus:outline-none focus:ring-2 transition-all"
+            style={{
+              backgroundColor: 'var(--input-bg)',
+              borderColor: 'var(--input-border)',
+              color: 'var(--text-primary)',
+              focusRingColor: '#4DB64F'
+            }}
           />
         </div>
         <div>
-          <label className="block text-xs font-medium text-[#4DB64F] mb-1">B</label>
+          <label className="block text-xs font-medium mb-1 transition-colors" style={{ color: 'var(--text-secondary)' }}>B</label>
           <input
             type="number"
             min="0"
             max="255"
             value={rgb.b}
             onChange={(e) => handleRgbChange('b', parseInt(e.target.value) || 0)}
-            className="w-full px-2 py-1.5 bg-[#1E1E1E] border border-[#4DB64F]/50 rounded-md text-[#4DB64F] text-sm focus:outline-none focus:ring-2 focus:ring-[#4DB64F] focus:border-[#4DB64F] transition-all"
+            className="w-full px-2 py-1.5 rounded-md text-sm focus:outline-none focus:ring-2 transition-all"
+            style={{
+              backgroundColor: 'var(--input-bg)',
+              borderColor: 'var(--input-border)',
+              color: 'var(--text-primary)',
+              focusRingColor: '#4DB64F'
+            }}
           />
         </div>
       </div>
 
       {/* Hex Input */}
       <div className="mb-4">
-        <label className="block text-xs font-medium text-[#4DB64F] mb-1">Hex</label>
+        <label className="block text-xs font-medium mb-1 transition-colors" style={{ color: 'var(--text-secondary)' }}>Hex</label>
         <div className="flex items-center gap-2">
           <div
-            className="w-8 h-8 rounded-md border-2 border-[#4DB64F]/50 flex-shrink-0"
-            style={{ backgroundColor: hex }}
+            className="w-8 h-8 rounded-md border-2 flex-shrink-0 transition-colors"
+            style={{ 
+              backgroundColor: hex,
+              borderColor: 'var(--border-color)'
+            }}
           />
           <input
             type="text"
             value={hex}
             onChange={(e) => handleHexChange(e.target.value)}
-            className="flex-1 px-2 py-1.5 bg-[#1E1E1E] border border-[#4DB64F]/50 rounded-md text-[#4DB64F] text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#4DB64F] focus:border-[#4DB64F] transition-all"
+            className="flex-1 px-2 py-1.5 rounded-md text-sm font-mono focus:outline-none focus:ring-2 transition-all"
+            style={{
+              backgroundColor: 'var(--input-bg)',
+              borderColor: 'var(--input-border)',
+              color: 'var(--text-primary)',
+              focusRingColor: '#4DB64F'
+            }}
             placeholder="#000000"
           />
         </div>
@@ -347,7 +382,7 @@ export default function FigmaColorPicker({ color, onChange, disableAlpha = true 
 
       {/* Preset Colors */}
       <div>
-        <label className="block text-xs font-medium text-[#4DB64F] mb-2">Presets</label>
+        <label className="block text-xs font-medium mb-2 transition-colors" style={{ color: 'var(--text-secondary)' }}>Presets</label>
         <div className="grid grid-cols-10 gap-1.5">
           {PRESET_COLORS.map((presetColor) => (
             <button
@@ -355,10 +390,10 @@ export default function FigmaColorPicker({ color, onChange, disableAlpha = true 
               onClick={() => {
                 handleHexChange(presetColor);
               }}
-              className="w-full aspect-square rounded-md border-2 transition-all hover:scale-110 hover:border-[#4DB64F] focus:outline-none focus:ring-2 focus:ring-[#4DB64F]"
+              className="w-full aspect-square rounded-md border-2 transition-all hover:scale-110 focus:outline-none focus:ring-2"
               style={{
                 backgroundColor: presetColor,
-                borderColor: hex === presetColor.toUpperCase() ? '#4DB64F' : 'rgba(77, 182, 79, 0.3)',
+                borderColor: hex === presetColor.toUpperCase() ? '#4DB64F' : 'var(--border-color)',
               }}
               title={presetColor}
             />
