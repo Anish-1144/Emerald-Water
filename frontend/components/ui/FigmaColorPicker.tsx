@@ -258,8 +258,7 @@ export default function FigmaColorPicker({ color, onChange, disableAlpha = true 
         <div
           ref={spectrumRef}
           className="w-full h-48 rounded-lg cursor-crosshair relative overflow-hidden border transition-colors"
-          style={{ borderColor: 'var(--border-color)' }}
-          style={spectrumStyle}
+          style={{ ...spectrumStyle, borderColor: 'var(--border-color)' }}
           onMouseDown={(e) => {
             setIsDraggingSpectrum(true);
             handleSpectrumClick(e);
@@ -281,8 +280,7 @@ export default function FigmaColorPicker({ color, onChange, disableAlpha = true 
         <div
           ref={hueRef}
           className="w-full h-6 rounded-md cursor-pointer relative overflow-hidden border transition-colors"
-          style={{ borderColor: 'var(--border-color)' }}
-          style={{ background: hueGradient }}
+          style={{ background: hueGradient, borderColor: 'var(--border-color)' }}
           onMouseDown={(e) => {
             setIsDraggingHue(true);
             handleHueClick(e);
@@ -312,8 +310,7 @@ export default function FigmaColorPicker({ color, onChange, disableAlpha = true 
             style={{
               backgroundColor: 'var(--input-bg)',
               borderColor: 'var(--input-border)',
-              color: 'var(--text-primary)',
-              focusRingColor: '#4DB64F'
+              color: 'var(--text-primary)'
             }}
           />
         </div>
@@ -329,8 +326,7 @@ export default function FigmaColorPicker({ color, onChange, disableAlpha = true 
             style={{
               backgroundColor: 'var(--input-bg)',
               borderColor: 'var(--input-border)',
-              color: 'var(--text-primary)',
-              focusRingColor: '#4DB64F'
+              color: 'var(--text-primary)'
             }}
           />
         </div>
@@ -346,8 +342,7 @@ export default function FigmaColorPicker({ color, onChange, disableAlpha = true 
             style={{
               backgroundColor: 'var(--input-bg)',
               borderColor: 'var(--input-border)',
-              color: 'var(--text-primary)',
-              focusRingColor: '#4DB64F'
+              color: 'var(--text-primary)'
             }}
           />
         </div>
@@ -372,8 +367,7 @@ export default function FigmaColorPicker({ color, onChange, disableAlpha = true 
             style={{
               backgroundColor: 'var(--input-bg)',
               borderColor: 'var(--input-border)',
-              color: 'var(--text-primary)',
-              focusRingColor: '#4DB64F'
+              color: 'var(--text-primary)'
             }}
             placeholder="#000000"
           />
