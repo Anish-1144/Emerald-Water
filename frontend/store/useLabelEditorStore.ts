@@ -174,7 +174,7 @@ export const useLabelEditorStore = create<LabelEditorState>((set, get) => ({
   history: [],
   historyIndex: -1,
   maxHistorySize: 50,
-  canvasWidth: 2081,
+  canvasWidth: 2000,
   canvasHeight: 544,
 
   // Set background color
@@ -387,7 +387,51 @@ export const useLabelEditorStore = create<LabelEditorState>((set, get) => ({
       });
 
       // Load and draw image elements
+      const drawCompanyDescription = () => {
+        // Company description constants (0.5 inch = 143px at 7 inches = 2000px)
+        const COMPANY_DESC_WIDTH = 143;
+        const COMPANY_DESC_TEXT = `Bottled with Superior Quality High pH Alkaline Water
+Bottled by/ Embouteillee par:
+Emerald Water & Ice Inc, Regina, Sk
+www.emeraldwater.ca 306-791-2291`;
+        const COMPANY_DESC_FONT_SIZE = 20;
+        const COMPANY_DESC_PADDING = 25;
+
+        // Save context
+        ctx.save();
+
+        // Translate to right edge, top, and rotate 90 degrees (full height)
+        ctx.translate(canvas.width, 0);
+        ctx.rotate(Math.PI / 2); // 90 degrees
+
+        // Draw black background rectangle - full height
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, canvas.height, COMPANY_DESC_WIDTH);
+
+        // Draw white text
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = `${COMPANY_DESC_FONT_SIZE}px Arial`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+
+        // Draw text with line breaks
+        const lines = COMPANY_DESC_TEXT.split('\n');
+        const lineHeight = COMPANY_DESC_FONT_SIZE * 1.2;
+        lines.forEach((line, index) => {
+          ctx.fillText(
+            line,
+            COMPANY_DESC_PADDING,
+            COMPANY_DESC_PADDING + (index * lineHeight)
+          );
+        });
+
+        // Restore context
+        ctx.restore();
+      };
+
       if (imageElements.length === 0) {
+        // Draw company description and resolve
+        drawCompanyDescription();
         resolve(canvas.toDataURL('image/png'));
         return;
       }
@@ -402,12 +446,16 @@ export const useLabelEditorStore = create<LabelEditorState>((set, get) => ({
           drawElementOnCanvas(ctx, element, state.canvasWidth, state.canvasHeight, img);
           loadedCount++;
           if (loadedCount === imageElements.length) {
+            // Draw company description after all images are loaded
+            drawCompanyDescription();
             resolve(canvas.toDataURL('image/png'));
           }
         };
         img.onerror = () => {
           loadedCount++;
           if (loadedCount === imageElements.length) {
+            // Draw company description even if some images fail
+            drawCompanyDescription();
             resolve(canvas.toDataURL('image/png'));
           }
         };

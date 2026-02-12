@@ -197,13 +197,17 @@ async function resizeImage(dataUrl, width, height) {
       return dataUrl;
     }
 
-    // Resize image using sharp to exact dimensions
+    // Resize image using sharp to exact dimensions with high-quality settings
     const resizedBuffer = await sharp(buffer)
       .resize(width, height, {
         fit: 'cover', // Fill the exact dimensions, maintaining aspect ratio (may crop)
-        position: 'center' // Center the image when cropping
+        position: 'center', // Center the image when cropping
+        kernel: sharp.kernel.lanczos3 // Use Lanczos3 for high-quality resampling (best quality)
       })
-      .png() // Convert to PNG for consistency
+      .png({ 
+        compressionLevel: 0, // No compression for best quality (0 = no compression, 9 = max compression)
+        palette: false // Disable palette for true color (better quality)
+      })
       .toBuffer();
 
     // Convert back to base64 data URL
@@ -217,7 +221,7 @@ async function resizeImage(dataUrl, width, height) {
 }
 
 /**
- * Convert image to PDF
+ * Convert image to PDF at high quality (150 DPI for print)
  * @param {string} dataUrl - Base64 image data URL
  * @param {number} width - Image width in pixels (will be converted to points for PDF)
  * @param {number} height - Image height in pixels (will be converted to points for PDF)
@@ -235,11 +239,12 @@ async function imageToPdf(dataUrl, width, height) {
         return;
       }
 
-      // Convert pixels to points (1 pixel = 0.75 points at 96 DPI)
-      // For 96 DPI: 1 inch = 96 pixels = 72 points
-      // So: 1 pixel = 72/96 = 0.75 points
-      const widthInPoints = width * 0.75;
-      const heightInPoints = height * 0.75;
+      // Convert pixels to points at 150 DPI for high-quality print
+      // For 150 DPI: 1 inch = 150 pixels = 72 points
+      // So: 1 pixel = 72/150 = 0.48 points
+      // This ensures crisp, pixel-perfect print quality
+      const widthInPoints = width * (72 / 150);
+      const heightInPoints = height * (72 / 150);
 
       // Create PDF document
       const doc = new PDFDocument({
@@ -263,7 +268,7 @@ async function imageToPdf(dataUrl, width, height) {
         reject(error);
       });
 
-      // Add image to PDF (fill the entire page)
+      // Add image to PDF at full resolution (fill the entire page)
       doc.image(buffer, 0, 0, {
         width: widthInPoints,
         height: heightInPoints,
@@ -296,22 +301,29 @@ async function uploadDesignImages(images) {
     }
   }
 
-  // Upload print_pdf - resize to 672x192 pixels and convert to PDF before uploading
+  // Upload print_pdf - resize to 672x192 pixels with high quality, then convert to PDF at 150 DPI
   if (images.print_pdf) {
     try {
       let printPdfToUpload = images.print_pdf;
       
-      // Only process if it's a base64 image (not already an S3 URL)
+      // Only process if it's a base64 image (not already an S3 URL or PDF)
       if (printPdfToUpload && printPdfToUpload.startsWith('data:')) {
-        console.log('Processing print_pdf: resizing to 672x192 pixels and converting to PDF...');
-        
-        // First resize the image to exactly 672x192 pixels
-        const resizedImage = await resizeImage(printPdfToUpload, 672, 192);
-        console.log('Image resized to 672x192 pixels');
-        
-        // Convert the resized image to PDF
-        printPdfToUpload = await imageToPdf(resizedImage, 672, 192);
-        console.log('Image converted to PDF successfully');
+        // Check if it's already a PDF
+        if (printPdfToUpload.startsWith('data:application/pdf')) {
+          // Already a PDF, use as-is
+          console.log('print_pdf is already a PDF, using as-is');
+        } else {
+          // It's an image, resize to print dimensions with high quality, then convert to PDF
+          console.log('Processing print_pdf: resizing to 672x192 pixels with high quality, then converting to PDF at 150 DPI...');
+          
+          // Resize the image to exactly 672x192 pixels using high-quality Lanczos3 resampling
+          const resizedImage = await resizeImage(printPdfToUpload, 672, 192);
+          console.log('Image resized to 672x192 pixels with high quality');
+          
+          // Convert the resized image to PDF at 150 DPI for crisp print quality
+          printPdfToUpload = await imageToPdf(resizedImage, 672, 192);
+          console.log('Image converted to high-quality PDF at 150 DPI successfully');
+        }
       }
       
       results.print_pdf = await uploadToS3(printPdfToUpload, 'print-pdfs');

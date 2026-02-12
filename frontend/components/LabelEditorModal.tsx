@@ -1,26 +1,212 @@
 'use client';
 
+/**
+ * LabelEditorModal — rewritten with react-konva
+ *
+ * What disappears entirely:
+ *   ✕  canvasUtils.ts          (isPointInElement, getResizeHandle, calculateResize,
+ *                                calculateRotation, getElementCorners, getCursorForHandle)
+ *   ✕  imageCacheRef           (Konva handles image loading/caching)
+ *   ✕  isDragging / isResizing / isRotating state
+ *   ✕  handleMouseMove cursor logic
+ *   ✕  renderCanvas() + useEffect re-render loop
+ *   ✕  All displayScale coordinate conversion math
+ *
+ * What replaces all of that:
+ *   ✓  <Transformer> — one component that gives you 8 resize handles,
+ *                       rotate handle, correct cursors, rotated hit detection,
+ *                       snap-to-angle, min/max size, keep-ratio — all automatic.
+ *   ✓  draggable prop on every node
+ *   ✓  onDragEnd / onTransformEnd — two callbacks to sync back to your store
+ */
+
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { X, ZoomIn, ZoomOut, Type, Image as ImageIcon } from 'lucide-react';
 import {
+  Stage, Layer, Rect, Image as KonvaImage, Text,
+  Transformer, Group,
+} from 'react-konva';
+import type Konva from 'konva';
+import useImage from 'use-image';
+import {
   useLabelEditorStore,
-  drawElementOnCanvas,
   LabelElement,
 } from '@/store/useLabelEditorStore';
 import FigmaColorPicker from '@/components/ui/FigmaColorPicker';
 import NumericInput from '@/components/ui/NumericInput';
 import { useThemeStore } from '@/lib/store';
-import {
-  isPointInElement,
-  getResizeHandle,
-  getCursorForHandle,
-  calculateResize,
-  calculateRotation,
-  getElementCorners,
-} from '@/lib/canvasUtils';
 
-const CANVAS_WIDTH = 2081;
+const CANVAS_WIDTH = 2000;
 const CANVAS_HEIGHT = 544;
+
+// Company description constants (0.5 inch = 142.86px at 7 inches = 2000px)
+const COMPANY_DESC_WIDTH = 143; // 0.5 inch in pixels (this will be the height after rotation)
+const COMPANY_DESC_TEXT = `Bottled with Superior Quality High pH Alkaline Water
+Bottled by/ Embouteillee par:
+Emerald Water & Ice Inc, Regina, Sk
+www.emeraldwater.ca 306-791-2291`;
+const COMPANY_DESC_FONT_SIZE = 20; // Bigger font size
+const COMPANY_DESC_PADDING = 25; // Padding on all sides
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tiny sub-components so each element controls its own Transformer
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ImageNode({
+  element,
+  isSelected,
+  onSelect,
+  onChange,
+}: {
+  element: LabelElement;
+  isSelected: boolean;
+  onSelect: () => void;
+  onChange: (attrs: Partial<LabelElement>) => void;
+}) {
+  const [img] = useImage(element.data);
+  const shapeRef = useRef<Konva.Image>(null);
+  const trRef = useRef<Konva.Transformer>(null);
+
+  useEffect(() => {
+    if (isSelected && trRef.current && shapeRef.current) {
+      trRef.current.nodes([shapeRef.current]);
+    }
+  }, [isSelected]);
+
+  return (
+    <>
+      <KonvaImage
+        ref={shapeRef}
+        image={img}
+        x={element.x}
+        y={element.y}
+        width={element.width}
+        height={element.height}
+        rotation={element.rotation}
+        scaleX={element.scaleX}
+        scaleY={element.scaleY}
+        draggable
+        onClick={onSelect}
+        onTap={onSelect}
+        onDragEnd={(e) => {
+          onChange({ x: e.target.x(), y: e.target.y() });
+          useLabelEditorStore.getState().saveHistory();
+        }}
+        onTransformEnd={() => {
+          const node = shapeRef.current!;
+          onChange({
+            x: node.x(),
+            y: node.y(),
+            width: node.width() * node.scaleX(),
+            height: node.height() * node.scaleY(),
+            rotation: node.rotation(),
+            scaleX: 1,
+            scaleY: 1,
+          });
+          node.scaleX(1);
+          node.scaleY(1);
+          useLabelEditorStore.getState().saveHistory();
+        }}
+      />
+
+      {isSelected && (
+        <Transformer
+          ref={trRef}
+          rotateEnabled={true}
+          keepRatio={false}
+          boundBoxFunc={(oldBox, newBox) =>
+            newBox.width < 10 || newBox.height < 10 ? oldBox : newBox
+          }
+        />
+      )}
+    </>
+  );
+}
+
+function TextNode({
+  element,
+  isSelected,
+  onSelect,
+  onChange,
+  onDoubleClick,
+}: {
+  element: LabelElement;
+  isSelected: boolean;
+  onSelect: () => void;
+  onChange: (attrs: Partial<LabelElement>) => void;
+  onDoubleClick?: () => void;
+}) {
+  const shapeRef = useRef<Konva.Text>(null);
+  const trRef = useRef<Konva.Transformer>(null);
+
+  useEffect(() => {
+    if (isSelected && trRef.current && shapeRef.current) {
+      trRef.current.nodes([shapeRef.current]);
+    }
+  }, [isSelected]);
+
+  return (
+    <>
+      <Text
+        ref={shapeRef}
+        x={element.x}
+        y={element.y}
+        width={element.width}
+        text={element.data}
+        fontSize={element.fontSize ?? 24}
+        fontFamily={element.fontFamily ?? 'Arial'}
+        fontStyle={[element.fontStyle, element.fontWeight].filter(Boolean).join(' ')}
+        textDecoration={element.textDecoration ?? 'none'}
+        align={element.textAlign ?? 'left'}
+        fill={element.color ?? '#000000'}
+        letterSpacing={element.letterSpacing ?? 0}
+        rotation={element.rotation}
+        scaleX={element.scaleX}
+        scaleY={element.scaleY}
+        draggable
+        onClick={onSelect}
+        onTap={onSelect}
+        onDblClick={onDoubleClick}
+        onDragEnd={(e) => {
+          onChange({ x: e.target.x(), y: e.target.y() });
+          useLabelEditorStore.getState().saveHistory();
+        }}
+        onTransformEnd={() => {
+          const node = shapeRef.current!;
+          onChange({
+            x: node.x(),
+            y: node.y(),
+            width: node.width() * node.scaleX(),
+            rotation: node.rotation(),
+            scaleX: 1,
+            scaleY: 1,
+          });
+          node.scaleX(1);
+          node.scaleY(1);
+          useLabelEditorStore.getState().saveHistory();
+        }}
+      />
+
+      {isSelected && (
+        <Transformer
+          ref={trRef}
+          rotateEnabled={true}
+          enabledAnchors={[
+            'middle-left', 'middle-right',
+            'top-left', 'top-right', 'bottom-left', 'bottom-right',
+          ]}
+          boundBoxFunc={(oldBox, newBox) =>
+            newBox.width < 20 ? oldBox : newBox
+          }
+        />
+      )}
+    </>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Main modal component
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface LabelEditorModalProps {
   isOpen: boolean;
@@ -34,35 +220,25 @@ export default function LabelEditorModal({
   onExport,
 }: LabelEditorModalProps) {
   const { theme } = useThemeStore();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const stageRef = useRef<Konva.Stage>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [displayScale, setDisplayScale] = useState(0.5);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
-  const [isRotating, setIsRotating] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const [activeHandle, setActiveHandle] = useState<
-    'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w' | 'rotate' | null
-  >(null);
-  const [hoverHandle, setHoverHandle] = useState<
-    'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w' | 'rotate' | null
-  >(null);
   const [showTextColorPicker, setShowTextColorPicker] = useState(false);
   const [showBgColorPicker, setShowBgColorPicker] = useState(false);
   const [editingElementId, setEditingElementId] = useState<string | null>(null);
   const [editingText, setEditingText] = useState('');
   const [editingPosition, setEditingPosition] = useState({ x: 0, y: 0, width: 0, height: 0 });
-  const imageCacheRef = useRef<Map<string, HTMLImageElement>>(new Map());
   const inlineInputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     backgroundColor,
     elements,
     setBackgroundColor,
-    addElement: addElementToStore,
-    updateElement: updateElementInStore,
+    addElement,
+    updateElement,
     deleteElement,
-    selectElement: selectElementInStore,
+    selectElement,
     duplicateElement,
     bringToFront,
     sendToBack,
@@ -75,47 +251,42 @@ export default function LabelEditorModal({
     exportCanvas,
   } = useLabelEditorStore();
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const selectedElement = elements.find((el) => el.selected);
 
-  // Handle image upload
+  // ── image upload ─────────────────────────────────────────────────────────
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const imageData = event.target?.result as string;
-        const img = new Image();
-        img.onload = () => {
-          const maxWidth = CANVAS_WIDTH * 0.8;
-          const maxHeight = CANVAS_HEIGHT * 0.8;
-          let width = img.width;
-          let height = img.height;
-
-          if (width > maxWidth || height > maxHeight) {
-            const scale = Math.min(maxWidth / width, maxHeight / height);
-            width = width * scale;
-            height = height * scale;
-          }
-
-          addElement({
-            type: 'image',
-            x: (CANVAS_WIDTH - width) / 2,
-            y: (CANVAS_HEIGHT - height) / 2,
-            width,
-            height,
-            rotation: 0,
-            scaleX: 1,
-            scaleY: 1,
-            data: imageData,
-          });
-        };
-        img.src = imageData;
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const data = ev.target?.result as string;
+      const img = new Image();
+      img.onload = () => {
+        const maxW = CANVAS_WIDTH * 0.8;
+        const maxH = CANVAS_HEIGHT * 0.8;
+        let { width: w, height: h } = img;
+        if (w > maxW || h > maxH) {
+          const sc = Math.min(maxW / w, maxH / h);
+          w *= sc;
+          h *= sc;
+        }
+        addElement({
+          type: 'image',
+          data,
+          x: (CANVAS_WIDTH - w) / 2,
+          y: (CANVAS_HEIGHT - h) / 2,
+          width: w,
+          height: h,
+          rotation: 0,
+          scaleX: 1,
+          scaleY: 1,
+        });
       };
-      reader.readAsDataURL(file);
-    }
+      img.src = data;
+    };
+    reader.readAsDataURL(file);
   };
 
-  // Handle add text
   const handleAddText = () => {
     addElement({
       type: 'text',
@@ -126,7 +297,7 @@ export default function LabelEditorModal({
       rotation: 0,
       scaleX: 1,
       scaleY: 1,
-      data: '', // Empty by default
+      data: '',
       fontSize: 24,
       fontFamily: 'Arial',
       color: '#000000',
@@ -136,255 +307,39 @@ export default function LabelEditorModal({
       textDecoration: 'none',
       letterSpacing: 0,
     });
-    // Force re-render to show the new element as selected
-    setTimeout(() => {
-      renderCanvas();
-    }, 50);
   };
 
-  const selectedElement = elements.find((el: LabelElement) => el.selected);
+  // ── handle double click for inline text editing ───────────────────────────
+  const handleTextDoubleClick = (element: LabelElement) => {
+    if (element.type !== 'text') return;
 
-  // Render canvas
-  const renderCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    selectElement(element.id);
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Set canvas size
-    canvas.width = CANVAS_WIDTH * displayScale;
-    canvas.height = CANVAS_HEIGHT * displayScale;
-
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Draw background
-    ctx.fillStyle = backgroundColor;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Draw grid pattern for transparency indication
-    if (backgroundColor === 'transparent' || backgroundColor.includes('rgba')) {
-      const gridSize = 20 * displayScale;
-      ctx.fillStyle = '#f0f0f0';
-      for (let x = 0; x < canvas.width; x += gridSize * 2) {
-        for (let y = 0; y < canvas.height; y += gridSize * 2) {
-          ctx.fillRect(x, y, gridSize, gridSize);
-          ctx.fillRect(x + gridSize, y + gridSize, gridSize, gridSize);
-        }
-      }
+    // Calculate position for inline input
+    let textX = element.x;
+    if (element.textAlign === 'center') {
+      textX = element.x + element.width / 2;
+    } else if (element.textAlign === 'right') {
+      textX = element.x + element.width;
     }
 
-    // Draw all elements
-    elements.forEach((element: LabelElement) => {
-      const scaledElement = {
-        ...element,
-        x: element.x * displayScale,
-        y: element.y * displayScale,
-        width: element.width * displayScale,
-        height: element.height * displayScale,
-      };
-
-      if (element.type === 'image') {
-        // Use cached image or load it
-        let img = imageCacheRef.current.get(element.data);
-        if (!img) {
-          img = new Image();
-          img.onload = () => {
-            // Re-render when image loads
-            renderCanvas();
-          };
-          img.src = element.data;
-          imageCacheRef.current.set(element.data, img);
-        }
-
-        // Draw if loaded
-        if (img.complete && img.naturalWidth > 0) {
-          ctx.save();
-          const centerX = scaledElement.x + scaledElement.width / 2;
-          const centerY = scaledElement.y + scaledElement.height / 2;
-          ctx.translate(centerX, centerY);
-          ctx.rotate((scaledElement.rotation * Math.PI) / 180);
-          ctx.scale(scaledElement.scaleX, scaledElement.scaleY);
-          ctx.translate(-centerX, -centerY);
-          ctx.drawImage(
-            img,
-            scaledElement.x,
-            scaledElement.y,
-            scaledElement.width,
-            scaledElement.height
-          );
-          ctx.restore();
-        }
-      } else {
-        drawElementOnCanvas(ctx, scaledElement, canvas.width, canvas.height);
-      }
-    });
-
-
-    // Draw selection box and handles for selected element
-    if (selectedElement) {
-      ctx.strokeStyle = '#4DB64F';
-      ctx.lineWidth = 2 / displayScale;
-      ctx.setLineDash([5 / displayScale, 5 / displayScale]);
-
-      const corners = getElementCorners({
-        ...selectedElement,
-        x: selectedElement.x * displayScale,
-        y: selectedElement.y * displayScale,
-        width: selectedElement.width * displayScale,
-        height: selectedElement.height * displayScale,
-      });
-
-      // Draw selection box
-      ctx.beginPath();
-      ctx.moveTo(corners[0].x, corners[0].y);
-      for (let i = 1; i < corners.length; i++) {
-        ctx.lineTo(corners[i].x, corners[i].y);
-      }
-      ctx.closePath();
-      ctx.stroke();
-
-      ctx.setLineDash([]);
-
-      // Draw resize handles - smaller size for better precision
-      const handleSize = 3 / displayScale; // Reduced to 3 for smaller handles
-      const centerX = (selectedElement.x + selectedElement.width / 2) * displayScale;
-      const centerY = (selectedElement.y + selectedElement.height / 2) * displayScale;
-      const rotation = (selectedElement.rotation * Math.PI) / 180;
-      const cos = Math.cos(rotation);
-      const sin = Math.sin(rotation);
-
-      const halfWidth =
-        (selectedElement.width * Math.abs(selectedElement.scaleX) * displayScale) / 2;
-      const halfHeight =
-        (selectedElement.height * Math.abs(selectedElement.scaleY) * displayScale) / 2;
-
-      const handles = [
-        { x: -halfWidth, y: -halfHeight, name: 'nw' },
-        { x: halfWidth, y: -halfHeight, name: 'ne' },
-        { x: -halfWidth, y: halfHeight, name: 'sw' },
-        { x: halfWidth, y: halfHeight, name: 'se' },
-        { x: 0, y: -halfHeight, name: 'n' },
-        { x: 0, y: halfHeight, name: 's' },
-        { x: halfWidth, y: 0, name: 'e' },
-        { x: -halfWidth, y: 0, name: 'w' },
-      ];
-
-      handles.forEach((handle) => {
-        const worldX = centerX + handle.x * cos - handle.y * sin;
-        const worldY = centerY + handle.x * sin + handle.y * cos;
-
-        ctx.fillStyle = '#4DB64F';
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.5 / displayScale; // Thinner stroke for smaller handles
-        ctx.beginPath();
-        ctx.arc(worldX, worldY, handleSize, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-      });
-
-      // Draw rotation handle
-      const rotateHandleY = -halfHeight - 30 / displayScale;
-      const rotateHandleX = centerX + 0 * cos - rotateHandleY * sin;
-      const rotateHandleYWorld = centerY + 0 * sin + rotateHandleY * cos;
-
-      ctx.fillStyle = '#4DB64F';
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1.5 / displayScale; // Thinner stroke for smaller handles
-      ctx.beginPath();
-      ctx.arc(rotateHandleX, rotateHandleYWorld, handleSize, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      // Draw rotation line
-      ctx.strokeStyle = '#4DB64F';
-      ctx.lineWidth = 1 / displayScale;
-      ctx.beginPath();
-      ctx.moveTo(centerX, centerY - halfHeight);
-      ctx.lineTo(rotateHandleX, rotateHandleYWorld);
-      ctx.stroke();
-    }
-  }, [elements, selectedElement, backgroundColor, displayScale]);
-
-  // Wrapper functions that ensure canvas re-renders (defined after renderCanvas)
-  const updateElement = useCallback((id: string, updates: Partial<LabelElement>) => {
-    updateElementInStore(id, updates);
-    // Force immediate canvas re-render
-    requestAnimationFrame(() => {
-      renderCanvas();
-    });
-  }, [updateElementInStore, renderCanvas]);
-
-  const addElement = useCallback((elementData: Omit<LabelElement, 'id' | 'selected'>) => {
-    addElementToStore(elementData);
-    // Force canvas re-render after element is added
-    requestAnimationFrame(() => {
-      renderCanvas();
-    });
-  }, [addElementToStore, renderCanvas]);
-
-  const selectElement = useCallback((id: string | null) => {
-    selectElementInStore(id);
-    // Force canvas re-render to show selection
-    requestAnimationFrame(() => {
-      renderCanvas();
-    });
-  }, [selectElementInStore, renderCanvas]);
-
-  // Re-render when state changes
-  useEffect(() => {
-    if (isOpen) {
-      renderCanvas();
-    }
-  }, [renderCanvas, isOpen]);
-
-  // Handle double click for inline text editing
-  const handleDoubleClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!containerRef.current || !canvasRef.current) return;
-
-    const rect = containerRef.current.getBoundingClientRect();
-    const canvasX = (e.clientX - rect.left) / displayScale;
-    const canvasY = (e.clientY - rect.top) / displayScale;
-
-    // Check if double-clicking on a text element
-    let clickedElement: LabelElement | null = null;
-    for (let i = elements.length - 1; i >= 0; i--) {
-      if (elements[i].type === 'text' && isPointInElement(canvasX, canvasY, elements[i])) {
-        clickedElement = elements[i];
-        break;
-      }
-    }
-
-    if (clickedElement && clickedElement.type === 'text') {
-      // Select the element first
-      selectElement(clickedElement.id);
-      
-      // Calculate position for inline input
-      // Calculate text position based on alignment
-      let textX = clickedElement.x;
-      if (clickedElement.textAlign === 'center') {
-        textX = clickedElement.x + clickedElement.width / 2;
-      } else if (clickedElement.textAlign === 'right') {
-        textX = clickedElement.x + clickedElement.width;
-      }
-
-      // Transform to container-relative coordinates (for absolute positioning)
+    // Transform to container-relative coordinates
+    if (containerRef.current && stageRef.current) {
       const containerRect = containerRef.current.getBoundingClientRect();
-      const canvasRect = canvasRef.current.getBoundingClientRect();
-      const containerX = (canvasRect.left - containerRect.left) + (textX * displayScale) + 16; // 16px for padding
-      const containerY = (canvasRect.top - containerRect.top) + (clickedElement.y * displayScale) + 16; // 16px for padding
-      
-      setEditingElementId(clickedElement.id);
-      setEditingText(clickedElement.data || '');
+      const stageContainer = stageRef.current.container();
+      const stageRect = stageContainer.getBoundingClientRect();
+      const containerX = (stageRect.left - containerRect.left) + (textX * displayScale) + 50 * displayScale;
+      const containerY = (stageRect.top - containerRect.top) + (element.y * displayScale) + 50 * displayScale;
+
+      setEditingElementId(element.id);
+      setEditingText(element.data || '');
       setEditingPosition({
         x: containerX,
         y: containerY,
-        width: clickedElement.width * displayScale,
-        height: clickedElement.height * displayScale,
+        width: element.width * displayScale,
+        height: element.height * displayScale,
       });
 
-      // Focus the input after a short delay to ensure it's rendered
       setTimeout(() => {
         if (inlineInputRef.current) {
           inlineInputRef.current.focus();
@@ -394,121 +349,49 @@ export default function LabelEditorModal({
     }
   };
 
-  // Handle mouse down
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!containerRef.current) return;
+  // ── export and close ──────────────────────────────────────────────────────
+  const handleExportAndClose = async () => {
+    try {
+      if (stageRef.current) {
+        // Temporarily scale stage to full resolution for export
+        const stage = stageRef.current;
+        const currentScale = displayScale;
+        stage.scale({ x: 1, y: 1 });
+        stage.size({ width: CANVAS_WIDTH, height: CANVAS_HEIGHT });
+        const dataURL = stage.toDataURL({ pixelRatio: 1 });
+        stage.scale({ x: currentScale, y: currentScale });
+        stage.size({ width: CANVAS_WIDTH * currentScale, height: CANVAS_HEIGHT * currentScale });
 
-    const rect = containerRef.current.getBoundingClientRect();
-    const canvasX = (e.clientX - rect.left) / displayScale;
-    const canvasY = (e.clientY - rect.top) / displayScale;
-
-    // Check if clicking on a resize handle (use smaller threshold to match smaller handles)
-    if (selectedElement) {
-      // Use handle size that matches the visual size (5px base, scaled)
-      const actualHandleSize = 5;
-      const handle = getResizeHandle(canvasX, canvasY, selectedElement, actualHandleSize);
-      if (handle) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (handle === 'rotate') {
-          setIsRotating(true);
-        } else {
-          setIsResizing(true);
-          setActiveHandle(handle);
+        if (onExport) {
+          onExport(dataURL);
         }
-        setDragStart({ x: canvasX, y: canvasY });
-        return;
-      }
-    }
-
-    // Check if clicking on an element
-    let clickedElement: LabelElement | null = null;
-    for (let i = elements.length - 1; i >= 0; i--) {
-      if (isPointInElement(canvasX, canvasY, elements[i])) {
-        clickedElement = elements[i];
-        break;
-      }
-    }
-
-    if (clickedElement) {
-      selectElement(clickedElement.id);
-      setIsDragging(true);
-      setDragStart({ x: canvasX, y: canvasY });
-      // Force re-render to show selection
-      requestAnimationFrame(() => {
-        renderCanvas();
-      });
-      console.log('Selected element:', clickedElement.type, clickedElement.id);
-    } else {
-      selectElement(null);
-      requestAnimationFrame(() => {
-        renderCanvas();
-      });
-    }
-  };
-
-  // Handle mouse move
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!containerRef.current) return;
-
-    const rect = containerRef.current.getBoundingClientRect();
-    const canvasX = (e.clientX - rect.left) / displayScale;
-    const canvasY = (e.clientY - rect.top) / displayScale;
-
-    // Update cursor
-    if (!isDragging && !isResizing && !isRotating && selectedElement) {
-      // Use handle size that matches the visual size (5px base)
-      const actualHandleSize = 5;
-      const handle = getResizeHandle(canvasX, canvasY, selectedElement, actualHandleSize);
-      setHoverHandle(handle);
-      if (handle) {
-        canvasRef.current!.style.cursor = getCursorForHandle(handle);
-      } else if (isPointInElement(canvasX, canvasY, selectedElement)) {
-        canvasRef.current!.style.cursor = 'move';
+        setTimeout(() => {
+          onClose();
+        }, 100);
       } else {
-        canvasRef.current!.style.cursor = 'default';
+        // Fallback to store export
+        const base64Image = await exportCanvas();
+        if (onExport) {
+          onExport(base64Image);
+        }
+        setTimeout(() => {
+          onClose();
+        }, 100);
       }
-    }
-
-    if (isRotating && selectedElement) {
-      const newRotation = calculateRotation(selectedElement, canvasX, canvasY);
-      updateElement(selectedElement.id, { rotation: newRotation });
-    } else if (isResizing && selectedElement && activeHandle) {
-      // Type guard: ensure activeHandle is not 'rotate'
-      if (activeHandle === 'rotate') {
-        // This shouldn't happen, but handle it gracefully
-        return;
-      }
-      const deltaX = canvasX - dragStart.x;
-      const deltaY = canvasY - dragStart.y;
-      
-      // Only resize if there's actual movement
-      if (Math.abs(deltaX) > 0.1 || Math.abs(deltaY) > 0.1) {
-        // TypeScript now knows activeHandle is not 'rotate'
-        const updates = calculateResize(selectedElement, activeHandle, deltaX, deltaY);
-        updateElement(selectedElement.id, updates);
-        setDragStart({ x: canvasX, y: canvasY });
-      }
-    } else if (isDragging && selectedElement) {
-      const deltaX = canvasX - dragStart.x;
-      const deltaY = canvasY - dragStart.y;
-      updateElement(selectedElement.id, {
-        x: selectedElement.x + deltaX,
-        y: selectedElement.y + deltaY,
-      });
-      setDragStart({ x: canvasX, y: canvasY });
+    } catch (error) {
+      console.error('Error exporting canvas:', error);
+      alert('Error exporting label. Please try again.');
     }
   };
 
-  // Handle mouse up
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    setIsResizing(false);
-    setIsRotating(false);
-    setActiveHandle(null);
+  // ── deselect on stage background click ───────────────────────────────────
+  const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (e.target === e.target.getStage() || e.target.name() === 'background') {
+      selectElement(null);
+    }
   };
 
-  // Handle keyboard shortcuts
+  // ── keyboard shortcuts ───────────────────────────────────────────────────
   useEffect(() => {
     if (!isOpen) return;
 
@@ -523,12 +406,12 @@ export default function LabelEditorModal({
         e.preventDefault();
         if (canRedo()) redo();
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
-        // Don't delete element if user is editing text in textarea or inline editor
         const activeElement = document.activeElement;
-        const isEditingText = (activeElement?.tagName === 'TEXTAREA' && 
-                              activeElement?.getAttribute('data-text-edit') !== null) ||
-                              editingElementId !== null;
-        
+        const isEditingText =
+          (activeElement?.tagName === 'TEXTAREA' &&
+            activeElement?.getAttribute('data-text-edit') !== null) ||
+          editingElementId !== null;
+
         if (selectedElement && !isEditingText) {
           deleteElement(selectedElement.id);
         }
@@ -557,53 +440,39 @@ export default function LabelEditorModal({
     onClose,
   ]);
 
-  // Handle export and close
-  const handleExportAndClose = async () => {
-    try {
-      const base64Image = await exportCanvas();
-      if (onExport) {
-        onExport(base64Image);
-      }
-      // Small delay to ensure texture is updated before closing
-      setTimeout(() => {
-        onClose();
-      }, 100);
-    } catch (error) {
-      console.error('Error exporting canvas:', error);
-      alert('Error exporting label. Please try again.');
-    }
-  };
-
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 bg-black/90 z-50 flex items-center justify-center p-4">
-      <div 
+      <div
         className="rounded-xl border w-full max-w-[95vw] h-[90vh] flex flex-col transition-colors"
-        style={{ 
-          backgroundColor: 'var(--background)', 
-          borderColor: 'var(--border-color)' 
+        style={{
+          backgroundColor: 'var(--background)',
+          borderColor: 'var(--border-color)',
         }}
       >
         {/* Header */}
-        <div 
+        <div
           className="p-4 border-b flex items-center justify-between transition-colors"
           style={{ borderColor: 'var(--border-color)' }}
         >
-          <h2 
+          <h2
             className="text-xl font-semibold transition-colors"
             style={{ color: 'var(--text-primary)' }}
           >
             Label Editor
           </h2>
           <div className="flex items-center gap-3">
-            {/* Add Elements */}
             <button
               onClick={handleAddText}
               className="px-3 py-2 border rounded-lg flex items-center gap-2 transition-colors text-sm"
               style={{
-                backgroundColor: selectedElement?.type === 'text' ? '#4DB64F' : 'var(--card-bg)',
-                borderColor: selectedElement?.type === 'text' ? '#4DB64F' : 'var(--border-color)',
+                backgroundColor:
+                  selectedElement?.type === 'text' ? '#4DB64F' : 'var(--card-bg)',
+                borderColor:
+                  selectedElement?.type === 'text'
+                    ? '#4DB64F'
+                    : 'var(--border-color)',
                 color: 'var(--text-primary)',
               }}
               onMouseEnter={(e) => {
@@ -624,8 +493,14 @@ export default function LabelEditorModal({
               onClick={() => fileInputRef.current?.click()}
               className="px-3 py-2 border rounded-full flex items-center gap-2 transition-colors text-sm"
               style={{
-                backgroundColor: (selectedElement?.type === 'image' || !selectedElement) ? '#4DB64F' : 'var(--card-bg)',
-                borderColor: (selectedElement?.type === 'image' || !selectedElement) ? '#4DB64F' : 'var(--border-color)',
+                backgroundColor:
+                  selectedElement?.type === 'image' || !selectedElement
+                    ? '#4DB64F'
+                    : 'var(--card-bg)',
+                borderColor:
+                  selectedElement?.type === 'image' || !selectedElement
+                    ? '#4DB64F'
+                    : 'var(--border-color)',
                 color: 'var(--text-primary)',
               }}
               onMouseEnter={(e) => {
@@ -651,11 +526,11 @@ export default function LabelEditorModal({
               className="hidden"
             />
             {/* Zoom Controls */}
-            <div 
+            <div
               className="flex items-center gap-2 rounded-lg px-2 py-1 border transition-colors"
-              style={{ 
-                backgroundColor: 'var(--card-bg)', 
-                borderColor: 'var(--border-color)' 
+              style={{
+                backgroundColor: 'var(--card-bg)',
+                borderColor: 'var(--border-color)',
               }}
             >
               <button
@@ -672,7 +547,7 @@ export default function LabelEditorModal({
               >
                 <ZoomOut className="w-4 h-4" />
               </button>
-              <span 
+              <span
                 className="text-sm min-w-[60px] text-center transition-colors"
                 style={{ color: 'var(--text-secondary)' }}
               >
@@ -715,7 +590,7 @@ export default function LabelEditorModal({
         {/* Main Content Area - Canvas + Right Sidebar */}
         <div className="flex-1 flex overflow-hidden">
           {/* Canvas Area */}
-          <div 
+          <div
             className="flex-1 overflow-auto p-4 flex items-center justify-center transition-colors"
             style={{ backgroundColor: 'var(--card-bg)' }}
           >
@@ -728,7 +603,7 @@ export default function LabelEditorModal({
                 padding: `${50 * displayScale}px`,
               }}
             >
-              {/* Dimension Overlay SVG - positioned to use the padding space */}
+              {/* Dimension Overlay SVG */}
               <svg
                 className="absolute pointer-events-none"
                 style={{
@@ -739,7 +614,7 @@ export default function LabelEditorModal({
                   zIndex: 2,
                 }}
               >
-                {/* Width dimension line (horizontal at bottom, in padding area) */}
+                {/* Width dimension line */}
                 <line
                   x1={50 * displayScale}
                   y1={CANVAS_HEIGHT * displayScale + 50 * displayScale + 20 * displayScale}
@@ -748,17 +623,14 @@ export default function LabelEditorModal({
                   stroke="#4DB64F"
                   strokeWidth={2.5 * displayScale}
                 />
-                {/* Left arrow */}
                 <path
                   d={`M ${50 * displayScale},${CANVAS_HEIGHT * displayScale + 50 * displayScale + 20 * displayScale} L ${50 * displayScale + 12 * displayScale},${CANVAS_HEIGHT * displayScale + 50 * displayScale + 20 * displayScale - 6 * displayScale} L ${50 * displayScale + 12 * displayScale},${CANVAS_HEIGHT * displayScale + 50 * displayScale + 20 * displayScale + 6 * displayScale} Z`}
                   fill="#4DB64F"
                 />
-                {/* Right arrow */}
                 <path
                   d={`M ${CANVAS_WIDTH * displayScale + 50 * displayScale},${CANVAS_HEIGHT * displayScale + 50 * displayScale + 20 * displayScale} L ${CANVAS_WIDTH * displayScale + 50 * displayScale - 12 * displayScale},${CANVAS_HEIGHT * displayScale + 50 * displayScale + 20 * displayScale - 6 * displayScale} L ${CANVAS_WIDTH * displayScale + 50 * displayScale - 12 * displayScale},${CANVAS_HEIGHT * displayScale + 50 * displayScale + 20 * displayScale + 6 * displayScale} Z`}
                   fill="#4DB64F"
                 />
-                {/* Width text */}
                 <text
                   x={(CANVAS_WIDTH * displayScale + 100 * displayScale) / 2}
                   y={CANVAS_HEIGHT * displayScale + 50 * displayScale + 45 * displayScale}
@@ -770,7 +642,7 @@ export default function LabelEditorModal({
                 >
                   7 inch
                 </text>
-                {/* Height dimension line (vertical on right, in padding area) */}
+                {/* Height dimension line */}
                 <line
                   x1={CANVAS_WIDTH * displayScale + 50 * displayScale + 20 * displayScale}
                   y1={50 * displayScale}
@@ -779,17 +651,14 @@ export default function LabelEditorModal({
                   stroke="#4DB64F"
                   strokeWidth={2.5 * displayScale}
                 />
-                {/* Top arrow */}
                 <path
                   d={`M ${CANVAS_WIDTH * displayScale + 50 * displayScale + 20 * displayScale},${50 * displayScale} L ${CANVAS_WIDTH * displayScale + 50 * displayScale + 20 * displayScale - 6 * displayScale},${50 * displayScale + 12 * displayScale} L ${CANVAS_WIDTH * displayScale + 50 * displayScale + 20 * displayScale + 6 * displayScale},${50 * displayScale + 12 * displayScale} Z`}
                   fill="#4DB64F"
                 />
-                {/* Bottom arrow */}
                 <path
                   d={`M ${CANVAS_WIDTH * displayScale + 50 * displayScale + 20 * displayScale},${CANVAS_HEIGHT * displayScale + 50 * displayScale} L ${CANVAS_WIDTH * displayScale + 50 * displayScale + 20 * displayScale - 6 * displayScale},${CANVAS_HEIGHT * displayScale + 50 * displayScale - 12 * displayScale} L ${CANVAS_WIDTH * displayScale + 50 * displayScale + 20 * displayScale + 6 * displayScale},${CANVAS_HEIGHT * displayScale + 50 * displayScale - 12 * displayScale} Z`}
                   fill="#4DB64F"
                 />
-                {/* Height text (rotated) */}
                 <text
                   x={CANVAS_WIDTH * displayScale + 50 * displayScale + 50 * displayScale}
                   y={(CANVAS_HEIGHT * displayScale + 100 * displayScale) / 2}
@@ -803,119 +672,98 @@ export default function LabelEditorModal({
                   2 inch
                 </text>
               </svg>
-              
-              <canvas
-                ref={canvasRef}
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
-                onDoubleClick={handleDoubleClick}
-                className="border rounded cursor-default transition-colors relative"
-                style={{
-                  width: `${CANVAS_WIDTH * displayScale}px`,
-                  height: `${CANVAS_HEIGHT * displayScale}px`,
-                  borderColor: 'var(--border-color)',
-                  backgroundColor: 'var(--background)',
-                  position: 'relative',
-                  zIndex: 1,
-                }}
-              />
+
+              {/* Konva Stage */}
+              <Stage
+                ref={stageRef}
+                width={CANVAS_WIDTH * displayScale}
+                height={CANVAS_HEIGHT * displayScale}
+                scaleX={displayScale}
+                scaleY={displayScale}
+                onClick={handleStageClick}
+                style={{ position: 'relative', zIndex: 1 }}
+              >
+                <Layer>
+                  {/* Background rect */}
+                  <Rect
+                    name="background"
+                    x={0}
+                    y={0}
+                    width={CANVAS_WIDTH}
+                    height={CANVAS_HEIGHT}
+                    fill={backgroundColor}
+                  />
+
+                  {/* All elements */}
+                  {elements.map((el) =>
+                    el.type === 'image' ? (
+                      <ImageNode
+                        key={el.id}
+                        element={el}
+                        isSelected={!!el.selected}
+                        onSelect={() => selectElement(el.id)}
+                        onChange={(attrs) => updateElement(el.id, attrs)}
+                      />
+                    ) : (
+                      <TextNode
+                        key={el.id}
+                        element={el}
+                        isSelected={!!el.selected}
+                        onSelect={() => selectElement(el.id)}
+                        onChange={(attrs) => updateElement(el.id, attrs)}
+                        onDoubleClick={() => handleTextDoubleClick(el)}
+                      />
+                    )
+                  )}
+
+                  {/* Fixed Company Description - Vertical, black background, white text, full height */}
+                  <Group
+                    x={CANVAS_WIDTH}
+                    y={0}
+                    rotation={90}
+                    listening={false}
+                  >
+                    {/* Black background rectangle - full height, 0.5 inch width */}
+                    <Rect
+                      x={0}
+                      y={0}
+                      width={CANVAS_HEIGHT}
+                      height={COMPANY_DESC_WIDTH}
+                      fill="#000000"
+                    />
+                    {/* White text with padding on all sides */}
+                    <Text
+                      x={COMPANY_DESC_PADDING}
+                      y={COMPANY_DESC_PADDING}
+                      width={CANVAS_HEIGHT - (COMPANY_DESC_PADDING * 2)}
+                      text={COMPANY_DESC_TEXT}
+                      fontSize={COMPANY_DESC_FONT_SIZE}
+                      fontFamily="Arial"
+                      fill="#FFFFFF"
+                      align="left"
+                      listening={false}
+                      perfectDrawEnabled={false}
+                      hitStrokeWidth={0}
+                    />
+                  </Group>
+                </Layer>
+              </Stage>
+
               {/* Inline text editor overlay */}
               {editingElementId && (() => {
-                const element = elements.find(el => el.id === editingElementId);
+                const element = elements.find((el) => el.id === editingElementId);
                 if (!element || element.type !== 'text') return null;
-                
+
                 return (
                   <textarea
                     ref={inlineInputRef}
                     value={editingText}
                     onChange={(e) => {
-                      // Update text in real-time
                       const newValue = e.target.value;
                       setEditingText(newValue);
-                      
-                      // Update element immediately for real-time canvas preview
-                      if (editingElementId) {
-                        const element = elements.find(el => el.id === editingElementId);
-                        if (element && element.type === 'text') {
-                          // Calculate text width based on actual text measurement
-                          const canvas = canvasRef.current;
-                          if (canvas && newValue.length > 0) {
-                            const ctx = canvas.getContext('2d');
-                            if (ctx) {
-                              // Ensure canvas is properly sized for accurate measurement
-                              const tempWidth = canvas.width || CANVAS_WIDTH;
-                              const tempHeight = canvas.height || CANVAS_HEIGHT;
-                              
-                              // Set font to match element's font properties
-                              const fontStyle = element.fontStyle || 'normal';
-                              const fontWeight = element.fontWeight || 'normal';
-                              const fontSize = element.fontSize || 24;
-                              const fontFamily = element.fontFamily || 'Arial';
-                              ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
-                              ctx.textAlign = element.textAlign || 'left';
-                              ctx.textBaseline = 'top';
-                              
-                              // Measure text width
-                              const letterSpacing = element.letterSpacing || 0;
-                              let textWidth: number;
-                              
-                              if (letterSpacing === 0) {
-                                const metrics = ctx.measureText(newValue);
-                                textWidth = metrics.width;
-                                // Add actualBoundingBoxLeft/Right for more accurate width
-                                if (metrics.actualBoundingBoxLeft !== undefined && metrics.actualBoundingBoxRight !== undefined) {
-                                  textWidth = metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight;
-                                }
-                              } else {
-                                // Calculate width with letter spacing
-                                let totalWidth = 0;
-                                for (let i = 0; i < newValue.length; i++) {
-                                  const charMetrics = ctx.measureText(newValue[i]);
-                                  totalWidth += charMetrics.width;
-                                  if (i < newValue.length - 1) {
-                                    totalWidth += letterSpacing;
-                                  }
-                                }
-                                textWidth = totalWidth;
-                              }
-                              
-                              // Update element with new text and calculated width (add generous padding)
-                              const minWidth = 50;
-                              const padding = Math.max(40, fontSize * 0.5); // Dynamic padding based on font size, minimum 40px
-                              const buffer = 10; // Additional buffer for font rendering differences
-                              const newWidth = Math.max(minWidth, Math.ceil(textWidth + padding + buffer));
-                              
-                              // Also update height based on font size
-                              const newHeight = Math.max(element.fontSize || 24, element.height);
-                              
-                              updateElement(editingElementId, {
-                                data: newValue,
-                                width: newWidth,
-                                height: newHeight,
-                              });
-                              
-                              // Force immediate re-render
-                              requestAnimationFrame(() => {
-                                renderCanvas();
-                              });
-                            } else {
-                              // Fallback: just update text
-                              updateElement(editingElementId, { data: newValue });
-                            }
-                          } else {
-                            // Update text even if empty or canvas not ready
-                            updateElement(editingElementId, { data: newValue });
-                          }
-                        } else {
-                          // Fallback: just update text
-                          updateElement(editingElementId, { data: newValue });
-                        }
-                      }
+                      updateElement(editingElementId, { data: newValue });
                     }}
                     onBlur={() => {
-                      // Save the text when done editing
                       if (editingElementId) {
                         updateElement(editingElementId, { data: editingText });
                         useLabelEditorStore.getState().saveHistory();
@@ -924,14 +772,11 @@ export default function LabelEditorModal({
                       setEditingText('');
                     }}
                     onKeyDown={(e) => {
-                      // Prevent backspace from deleting element or closing section
                       if (e.key === 'Backspace' || e.key === 'Delete') {
                         e.stopPropagation();
-                        // Allow normal text editing behavior
                         return;
                       }
                       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-                        // Ctrl/Cmd + Enter to finish editing
                         e.preventDefault();
                         if (editingElementId) {
                           updateElement(editingElementId, { data: editingText });
@@ -941,7 +786,6 @@ export default function LabelEditorModal({
                         setEditingText('');
                         inlineInputRef.current?.blur();
                       } else if (e.key === 'Escape') {
-                        // Cancel editing and restore original text
                         e.preventDefault();
                         setEditingElementId(null);
                         setEditingText('');
@@ -954,10 +798,8 @@ export default function LabelEditorModal({
                       top: `${editingPosition.y}px`,
                       width: `${Math.max(editingPosition.width, 100)}px`,
                       minHeight: `${editingPosition.height}px`,
-                      // Editor styling: black background, white text for better visibility while editing
                       background: '#000000',
                       color: '#ffffff',
-                      // Keep font properties from element for proper sizing/alignment (but not color)
                       fontFamily: element.fontFamily || 'Arial',
                       fontSize: `${(element.fontSize || 24) * displayScale}px`,
                       fontWeight: element.fontWeight || 'normal',
@@ -970,9 +812,10 @@ export default function LabelEditorModal({
                       resize: 'none',
                       overflow: 'hidden',
                       zIndex: 1000,
-                      transform: element.rotation !== 0 
-                        ? `rotate(${element.rotation}deg)` 
-                        : 'none',
+                      transform:
+                        element.rotation !== 0
+                          ? `rotate(${element.rotation}deg)`
+                          : 'none',
                       transformOrigin: 'top left',
                       whiteSpace: 'pre-wrap',
                       wordWrap: 'break-word',
@@ -984,20 +827,20 @@ export default function LabelEditorModal({
             </div>
           </div>
 
-          {/* Right Sidebar */}
-          <div 
+          {/* Right Sidebar - Keep all existing sidebar code */}
+          <div
             className="w-80 border-l overflow-y-auto flex flex-col transition-colors"
-            style={{ 
-              backgroundColor: 'var(--background)', 
-              borderColor: 'var(--border-color)' 
+            style={{
+              backgroundColor: 'var(--background)',
+              borderColor: 'var(--border-color)',
             }}
           >
             {/* Background Color Section */}
-            <div 
+            <div
               className="p-4 border-b transition-colors"
               style={{ borderColor: 'var(--border-color)' }}
             >
-              <label 
+              <label
                 className="block text-sm font-semibold mb-3 transition-colors"
                 style={{ color: 'var(--text-primary)' }}
               >
@@ -1005,10 +848,10 @@ export default function LabelEditorModal({
               </label>
               <div className="flex items-center gap-3 mb-3">
                 <div
-                    className="w-16 h-16 rounded-lg border-2 cursor-pointer shadow-lg hover:scale-105 transition-transform shrink-0"
-                  style={{ 
+                  className="w-16 h-16 rounded-lg border-2 cursor-pointer shadow-lg hover:scale-105 transition-transform shrink-0"
+                  style={{
                     backgroundColor,
-                    borderColor: 'var(--border-color)'
+                    borderColor: 'var(--border-color)',
                   }}
                   onClick={() => {
                     setShowBgColorPicker(!showBgColorPicker);
@@ -1016,13 +859,13 @@ export default function LabelEditorModal({
                   }}
                 />
                 <div className="flex-1 min-w-0">
-                  <p 
+                  <p
                     className="text-xs mb-1 transition-colors"
                     style={{ color: 'var(--text-muted)' }}
                   >
                     Label background
                   </p>
-                  <p 
+                  <p
                     className="text-sm font-mono truncate transition-colors"
                     style={{ color: 'var(--text-primary)' }}
                   >
@@ -1040,13 +883,13 @@ export default function LabelEditorModal({
               )}
             </div>
 
-            {/* Image Properties Section - Show by default when no element selected or when image is selected */}
+            {/* Image Properties Section */}
             {(!selectedElement || selectedElement.type === 'image') && (
-              <div 
+              <div
                 className="p-4 border-b transition-colors"
                 style={{ borderColor: 'var(--border-color)' }}
               >
-                <h3 
+                <h3
                   className="text-sm font-semibold mb-3 transition-colors"
                   style={{ color: 'var(--text-primary)' }}
                 >
@@ -1054,20 +897,20 @@ export default function LabelEditorModal({
                 </h3>
                 <div className="space-y-3">
                   {!selectedElement && (
-                    <div 
+                    <div
                       className="rounded-lg p-3 border transition-colors"
-                      style={{ 
-                        backgroundColor: 'var(--card-bg)', 
-                        borderColor: 'var(--border-color)' 
+                      style={{
+                        backgroundColor: 'var(--card-bg)',
+                        borderColor: 'var(--border-color)',
                       }}
                     >
-                      <p 
+                      <p
                         className="text-xs mb-2 transition-colors"
                         style={{ color: 'var(--text-muted)' }}
                       >
                         No Image Selected
                       </p>
-                      <p 
+                      <p
                         className="text-xs transition-colors"
                         style={{ color: 'var(--text-secondary)' }}
                       >
@@ -1077,20 +920,20 @@ export default function LabelEditorModal({
                   )}
                   {selectedElement && selectedElement.type === 'image' && (
                     <>
-                      <div 
+                      <div
                         className="rounded-lg p-3 border transition-colors"
-                        style={{ 
-                          backgroundColor: 'var(--card-bg)', 
-                          borderColor: 'var(--border-color)' 
+                        style={{
+                          backgroundColor: 'var(--card-bg)',
+                          borderColor: 'var(--border-color)',
                         }}
                       >
-                        <p 
+                        <p
                           className="text-xs mb-2 transition-colors"
                           style={{ color: 'var(--text-muted)' }}
                         >
                           Resize Instructions
                         </p>
-                        <p 
+                        <p
                           className="text-xs transition-colors"
                           style={{ color: 'var(--text-secondary)' }}
                         >
@@ -1119,16 +962,16 @@ export default function LabelEditorModal({
               </div>
             )}
 
-            {/* Text Color Section (for selected text element) - Moved to top for better visibility */}
+            {/* Text Color Section */}
             {selectedElement && selectedElement.type === 'text' && (
-              <div 
+              <div
                 className="p-4 border-b transition-colors"
-                style={{ 
-                  backgroundColor: 'var(--card-bg)', 
-                  borderColor: 'var(--border-color)' 
+                style={{
+                  backgroundColor: 'var(--card-bg)',
+                  borderColor: 'var(--border-color)',
                 }}
               >
-                <label 
+                <label
                   className="block text-sm font-semibold mb-3 transition-colors"
                   style={{ color: 'var(--text-primary)' }}
                 >
@@ -1137,9 +980,9 @@ export default function LabelEditorModal({
                 <div className="flex items-center gap-3 mb-3">
                   <div
                     className="w-16 h-16 rounded-lg border-2 cursor-pointer shadow-lg hover:scale-105 transition-transform shrink-0"
-                    style={{ 
+                    style={{
                       backgroundColor: selectedElement.color || '#000000',
-                      borderColor: 'var(--border-color)'
+                      borderColor: 'var(--border-color)',
                     }}
                     onClick={() => {
                       setShowTextColorPicker(!showTextColorPicker);
@@ -1147,13 +990,13 @@ export default function LabelEditorModal({
                     }}
                   />
                   <div className="flex-1 min-w-0">
-                    <p 
+                    <p
                       className="text-xs mb-1 transition-colors"
                       style={{ color: 'var(--text-muted)' }}
                     >
                       Click to change text color
                     </p>
-                    <p 
+                    <p
                       className="text-sm font-mono truncate transition-colors"
                       style={{ color: 'var(--text-primary)' }}
                     >
@@ -1176,11 +1019,11 @@ export default function LabelEditorModal({
 
             {/* Selected Element Properties */}
             {selectedElement && (
-              <div 
+              <div
                 className="p-4 border-b space-y-4 transition-colors"
                 style={{ borderColor: 'var(--border-color)' }}
               >
-                <h3 
+                <h3
                   className="text-sm font-semibold transition-colors"
                   style={{ color: 'var(--text-primary)' }}
                 >
@@ -1234,10 +1077,8 @@ export default function LabelEditorModal({
                     <div className="flex gap-2 mb-3">
                       <button
                         onClick={() => {
-                          const textarea = document.querySelector('textarea[data-text-edit]') as HTMLTextAreaElement;
-                          if (textarea) {
-                            textarea.focus();
-                            textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+                          if (selectedElement) {
+                            handleTextDoubleClick(selectedElement);
                           }
                         }}
                         className="flex-1 px-3 py-2 bg-[#4DB64F] hover:bg-[#45a049] border border-[#4DB64F] rounded-lg text-white flex items-center justify-center gap-2 transition-colors text-sm font-medium"
@@ -1248,10 +1089,10 @@ export default function LabelEditorModal({
                       <button
                         onClick={handleAddText}
                         className="flex-1 px-3 py-2 border rounded-lg flex items-center justify-center gap-2 transition-colors text-sm font-medium"
-                        style={{ 
-                          backgroundColor: 'var(--card-bg)', 
+                        style={{
+                          backgroundColor: 'var(--card-bg)',
                           borderColor: 'var(--border-color)',
-                          color: 'var(--text-primary)'
+                          color: 'var(--text-primary)',
                         }}
                         onMouseEnter={(e) => {
                           e.currentTarget.style.backgroundColor = 'var(--hover-bg)';
@@ -1266,7 +1107,7 @@ export default function LabelEditorModal({
                     </div>
 
                     <div>
-                      <label 
+                      <label
                         className="block text-sm font-semibold mb-2 transition-colors"
                         style={{ color: 'var(--text-primary)' }}
                       >
@@ -1276,86 +1117,14 @@ export default function LabelEditorModal({
                         data-text-edit
                         value={selectedElement.data ?? ''}
                         onChange={(e) => {
-                          const newText = e.target.value;
-                          // Calculate text width based on actual text measurement
-                          const canvas = canvasRef.current;
-                          if (canvas && newText.length > 0) {
-                            const ctx = canvas.getContext('2d');
-                            if (ctx) {
-                              // Ensure canvas is properly sized for accurate measurement
-                              const tempWidth = canvas.width || CANVAS_WIDTH;
-                              const tempHeight = canvas.height || CANVAS_HEIGHT;
-                              
-                              // Set font to match element's font properties
-                              const fontStyle = selectedElement.fontStyle || 'normal';
-                              const fontWeight = selectedElement.fontWeight || 'normal';
-                              const fontSize = selectedElement.fontSize || 24;
-                              const fontFamily = selectedElement.fontFamily || 'Arial';
-                              ctx.font = `${fontStyle} ${fontWeight} ${fontSize}px ${fontFamily}`;
-                              ctx.textAlign = selectedElement.textAlign || 'left';
-                              ctx.textBaseline = 'top';
-                              
-                              // Measure text width
-                              const letterSpacing = selectedElement.letterSpacing || 0;
-                              let textWidth: number;
-                              
-                              if (letterSpacing === 0) {
-                                const metrics = ctx.measureText(newText);
-                                textWidth = metrics.width;
-                                // Add actualBoundingBoxLeft/Right for more accurate width
-                                if (metrics.actualBoundingBoxLeft !== undefined && metrics.actualBoundingBoxRight !== undefined) {
-                                  textWidth = metrics.actualBoundingBoxLeft + metrics.actualBoundingBoxRight;
-                                }
-                              } else {
-                                // Calculate width with letter spacing
-                                let totalWidth = 0;
-                                for (let i = 0; i < newText.length; i++) {
-                                  const charMetrics = ctx.measureText(newText[i]);
-                                  totalWidth += charMetrics.width;
-                                  if (i < newText.length - 1) {
-                                    totalWidth += letterSpacing;
-                                  }
-                                }
-                                textWidth = totalWidth;
-                              }
-                              
-                              // Update element with new text and calculated width (add generous padding)
-                              const minWidth = 50;
-                              const padding = Math.max(40, fontSize * 0.5); // Dynamic padding based on font size, minimum 40px
-                              const buffer = 10; // Additional buffer for font rendering differences
-                              const newWidth = Math.max(minWidth, Math.ceil(textWidth + padding + buffer));
-                              
-                              // Also update height based on font size
-                              const newHeight = Math.max(selectedElement.fontSize || 24, selectedElement.height);
-                              
-                              updateElement(selectedElement.id, {
-                                data: newText,
-                                width: newWidth,
-                                height: newHeight,
-                              });
-                              
-                              // Force immediate re-render
-                              requestAnimationFrame(() => {
-                                renderCanvas();
-                              });
-                            } else {
-                              // Fallback: just update text
-                              updateElement(selectedElement.id, { data: newText });
-                            }
-                          } else {
-                            // Update text even if empty or canvas not ready
-                            updateElement(selectedElement.id, { data: newText });
-                          }
+                          updateElement(selectedElement.id, { data: e.target.value });
                         }}
                         onBlur={() => {
-                          // Save history when user finishes editing
                           useLabelEditorStore.getState().saveHistory();
                         }}
                         onKeyDown={(e) => {
-                          // Prevent backspace from deleting element or closing section
                           if (e.key === 'Backspace' || e.key === 'Delete') {
                             e.stopPropagation();
-                            // Allow normal text editing behavior - don't prevent default
                           }
                         }}
                         className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:border-[#4DB64F] text-sm transition-colors"
@@ -1369,9 +1138,9 @@ export default function LabelEditorModal({
                       />
                     </div>
 
-                    {/* Font Size - More Prominent with Live Preview */}
+                    {/* Font Size */}
                     <div>
-                      <label 
+                      <label
                         className="block text-sm font-semibold mb-2 transition-colors"
                         style={{ color: 'var(--text-primary)' }}
                       >
@@ -1383,10 +1152,10 @@ export default function LabelEditorModal({
                           min="8"
                           max="200"
                           value={selectedElement.fontSize || 24}
-                        onChange={(e) => {
-                          const newSize = parseInt(e.target.value);
-                          updateElement(selectedElement.id, { fontSize: newSize });
-                        }}
+                          onChange={(e) => {
+                            const newSize = parseInt(e.target.value);
+                            updateElement(selectedElement.id, { fontSize: newSize });
+                          }}
                           className="flex-1 h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-[#4DB64F]"
                         />
                         <NumericInput
@@ -1401,9 +1170,9 @@ export default function LabelEditorModal({
                       </div>
                     </div>
 
-                    {/* Font Style - More Prominent */}
+                    {/* Font Style */}
                     <div>
-                      <label 
+                      <label
                         className="block text-sm font-semibold mb-2 transition-colors"
                         style={{ color: 'var(--text-primary)' }}
                       >
@@ -1419,8 +1188,14 @@ export default function LabelEditorModal({
                           }}
                           className="px-3 py-2.5 rounded-lg border transition-colors text-sm font-medium"
                           style={{
-                            backgroundColor: selectedElement.fontWeight === 'bold' ? '#4DB64F' : 'var(--card-bg)',
-                            borderColor: selectedElement.fontWeight === 'bold' ? '#4DB64F' : 'var(--border-color)',
+                            backgroundColor:
+                              selectedElement.fontWeight === 'bold'
+                                ? '#4DB64F'
+                                : 'var(--card-bg)',
+                            borderColor:
+                              selectedElement.fontWeight === 'bold'
+                                ? '#4DB64F'
+                                : 'var(--border-color)',
                             color: 'var(--text-primary)',
                           }}
                           onMouseEnter={(e) => {
@@ -1445,8 +1220,14 @@ export default function LabelEditorModal({
                           }}
                           className="px-3 py-2.5 rounded-lg border transition-colors text-sm font-medium"
                           style={{
-                            backgroundColor: selectedElement.fontStyle === 'italic' ? '#4DB64F' : 'var(--card-bg)',
-                            borderColor: selectedElement.fontStyle === 'italic' ? '#4DB64F' : 'var(--border-color)',
+                            backgroundColor:
+                              selectedElement.fontStyle === 'italic'
+                                ? '#4DB64F'
+                                : 'var(--card-bg)',
+                            borderColor:
+                              selectedElement.fontStyle === 'italic'
+                                ? '#4DB64F'
+                                : 'var(--border-color)',
                             color: 'var(--text-primary)',
                           }}
                           onMouseEnter={(e) => {
@@ -1473,8 +1254,14 @@ export default function LabelEditorModal({
                           }}
                           className="px-3 py-2.5 rounded-lg border transition-colors text-sm font-medium"
                           style={{
-                            backgroundColor: selectedElement.textDecoration === 'underline' ? '#4DB64F' : 'var(--card-bg)',
-                            borderColor: selectedElement.textDecoration === 'underline' ? '#4DB64F' : 'var(--border-color)',
+                            backgroundColor:
+                              selectedElement.textDecoration === 'underline'
+                                ? '#4DB64F'
+                                : 'var(--card-bg)',
+                            borderColor:
+                              selectedElement.textDecoration === 'underline'
+                                ? '#4DB64F'
+                                : 'var(--border-color)',
                             color: 'var(--text-primary)',
                           }}
                           onMouseEnter={(e) => {
@@ -1493,9 +1280,9 @@ export default function LabelEditorModal({
                       </div>
                     </div>
 
-                    {/* Font Family - More Prominent with Live Preview */}
+                    {/* Font Family */}
                     <div>
-                      <label 
+                      <label
                         className="block text-sm font-semibold mb-2 transition-colors"
                         style={{ color: 'var(--text-primary)' }}
                       >
@@ -1507,7 +1294,7 @@ export default function LabelEditorModal({
                           updateElement(selectedElement.id, { fontFamily: e.target.value });
                         }}
                         className="w-full px-3 py-2.5 border rounded-lg focus:outline-none focus:border-[#4DB64F] text-sm font-medium appearance-none cursor-pointer transition-colors"
-                        style={{ 
+                        style={{
                           fontFamily: selectedElement.fontFamily || 'Arial',
                           backgroundColor: 'var(--input-bg)',
                           borderColor: 'var(--input-border)',
@@ -1515,37 +1302,40 @@ export default function LabelEditorModal({
                           backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='${theme === 'light' ? '%23111827' : '%23ffffff'}' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
                           backgroundRepeat: 'no-repeat',
                           backgroundPosition: 'right 12px center',
-                          paddingRight: '36px'
+                          paddingRight: '36px',
                         }}
                       >
-                        <option value="Arial" style={{ fontFamily: 'Arial', backgroundColor: '#1E1E1E', color: '#ffffff' }}>Arial</option>
-                        <option value="Helvetica" style={{ fontFamily: 'Helvetica', backgroundColor: '#1E1E1E', color: '#ffffff' }}>Helvetica</option>
-                        <option value="Times New Roman" style={{ fontFamily: 'Times New Roman', backgroundColor: '#1E1E1E', color: '#ffffff' }}>Times New Roman</option>
-                        <option value="Courier New" style={{ fontFamily: 'Courier New', backgroundColor: '#1E1E1E', color: '#ffffff' }}>Courier New</option>
-                        <option value="Verdana" style={{ fontFamily: 'Verdana', backgroundColor: '#1E1E1E', color: '#ffffff' }}>Verdana</option>
-                        <option value="Georgia" style={{ fontFamily: 'Georgia', backgroundColor: '#1E1E1E', color: '#ffffff' }}>Georgia</option>
-                        <option value="Palatino" style={{ fontFamily: 'Palatino', backgroundColor: '#1E1E1E', color: '#ffffff' }}>Palatino</option>
-                        <option value="Garamond" style={{ fontFamily: 'Garamond', backgroundColor: '#1E1E1E', color: '#ffffff' }}>Garamond</option>
-                        <option value="Comic Sans MS" style={{ fontFamily: 'Comic Sans MS', backgroundColor: '#1E1E1E', color: '#ffffff' }}>Comic Sans MS</option>
-                        <option value="Impact" style={{ fontFamily: 'Impact', backgroundColor: '#1E1E1E', color: '#ffffff' }}>Impact</option>
-                        <option value="Roboto" style={{ fontFamily: 'Roboto', backgroundColor: '#1E1E1E', color: '#ffffff' }}>Roboto</option>
-                        <option value="Open Sans" style={{ fontFamily: 'Open Sans', backgroundColor: '#1E1E1E', color: '#ffffff' }}>Open Sans</option>
-                        <option value="Montserrat" style={{ fontFamily: 'Montserrat', backgroundColor: '#1E1E1E', color: '#ffffff' }}>Montserrat</option>
-                        <option value="Lato" style={{ fontFamily: 'Lato', backgroundColor: '#1E1E1E', color: '#ffffff' }}>Lato</option>
-                        <option value="Poppins" style={{ fontFamily: 'Poppins', backgroundColor: '#1E1E1E', color: '#ffffff' }}>Poppins</option>
-                        <option value="Inter" style={{ fontFamily: 'Inter', backgroundColor: '#1E1E1E', color: '#ffffff' }}>Inter</option>
-                        <option value="Playfair Display" style={{ fontFamily: 'Playfair Display', backgroundColor: '#1E1E1E', color: '#ffffff' }}>Playfair Display</option>
-                        <option value="Raleway" style={{ fontFamily: 'Raleway', backgroundColor: '#1E1E1E', color: '#ffffff' }}>Raleway</option>
-                        <option value="Oswald" style={{ fontFamily: 'Oswald', backgroundColor: '#1E1E1E', color: '#ffffff' }}>Oswald</option>
-                        <option value="Source Sans Pro" style={{ fontFamily: 'Source Sans Pro', backgroundColor: '#1E1E1E', color: '#ffffff' }}>Source Sans Pro</option>
+                        {[
+                          'Arial', 'Helvetica', 'Times New Roman', 'Courier New',
+                          'Verdana', 'Georgia', 'Palatino', 'Garamond',
+                          'Comic Sans MS', 'Impact', 'Roboto', 'Open Sans',
+                          'Montserrat', 'Lato', 'Poppins', 'Inter',
+                          'Playfair Display', 'Raleway', 'Oswald', 'Source Sans Pro',
+                        ].map((f) => (
+                          <option
+                            key={f}
+                            value={f}
+                            style={{
+                              fontFamily: f,
+                              backgroundColor: '#1E1E1E',
+                              color: '#ffffff',
+                            }}
+                          >
+                            {f}
+                          </option>
+                        ))}
                       </select>
                       <p className="text-xs text-gray-400 mt-1">
-                        Current: <span style={{ fontFamily: selectedElement.fontFamily || 'Arial' }}>{selectedElement.fontFamily || 'Arial'}</span>
+                        Current:{' '}
+                        <span style={{ fontFamily: selectedElement.fontFamily || 'Arial' }}>
+                          {selectedElement.fontFamily || 'Arial'}
+                        </span>
                       </p>
                     </div>
 
+                    {/* Text Align */}
                     <div>
-                      <label 
+                      <label
                         className="block text-sm font-semibold mb-2 transition-colors"
                         style={{ color: 'var(--text-primary)' }}
                       >
@@ -1566,16 +1356,22 @@ export default function LabelEditorModal({
                           backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='${theme === 'light' ? '%23111827' : '%23ffffff'}' d='M6 9L1 4h10z'/%3E%3C/svg%3E")`,
                           backgroundRepeat: 'no-repeat',
                           backgroundPosition: 'right 12px center',
-                          paddingRight: '36px'
+                          paddingRight: '36px',
                         }}
                       >
-                        <option value="left" style={{ backgroundColor: '#1E1E1E', color: '#ffffff' }}>Left</option>
-                        <option value="center" style={{ backgroundColor: '#1E1E1E', color: '#ffffff' }}>Center</option>
-                        <option value="right" style={{ backgroundColor: '#1E1E1E', color: '#ffffff' }}>Right</option>
+                        <option value="left" style={{ backgroundColor: '#1E1E1E', color: '#ffffff' }}>
+                          Left
+                        </option>
+                        <option value="center" style={{ backgroundColor: '#1E1E1E', color: '#ffffff' }}>
+                          Center
+                        </option>
+                        <option value="right" style={{ backgroundColor: '#1E1E1E', color: '#ffffff' }}>
+                          Right
+                        </option>
                       </select>
                     </div>
 
-
+                    {/* Letter Spacing */}
                     <NumericInput
                       label="Letter Spacing"
                       value={selectedElement.letterSpacing || 0}
@@ -1595,56 +1391,50 @@ export default function LabelEditorModal({
             {/* Info when no element selected */}
             {!selectedElement && (
               <div className="p-4 text-sm text-gray-400 space-y-2">
-                <p 
+                <p
                   className="font-semibold mb-2 transition-colors"
                   style={{ color: 'var(--text-primary)' }}
                 >
                   No Element Selected
                 </p>
-                <p>Click on a text or image element on the canvas to select it and edit its properties.</p>
+                <p>
+                  Click on a text or image element on the canvas to select it and edit its properties.
+                </p>
                 <p className="text-xs text-gray-500 mt-2">
                   Tip: Click "Add Text" to create a new text element, then click on it to select.
                 </p>
-              </div>
-            )}
-
-            {/* Debug info - Remove in production */}
-            {selectedElement && (
-              <div className="p-4 border-t border-white/10 text-xs text-gray-500">
-                <p>Element ID: {selectedElement.id}</p>
-                <p>Type: {selectedElement.type}</p>
-                <p>Selected: {selectedElement.selected ? 'Yes' : 'No'}</p>
               </div>
             )}
           </div>
         </div>
 
         {/* Footer with Actions */}
-        <div 
+        <div
           className="p-4 border-t flex items-center justify-between transition-colors"
-          style={{ 
-            backgroundColor: 'var(--background)', 
-            borderColor: 'var(--border-color)' 
+          style={{
+            backgroundColor: 'var(--background)',
+            borderColor: 'var(--border-color)',
           }}
         >
-          <div 
+          <div
             className="flex items-center gap-3 text-sm transition-colors"
             style={{ color: 'var(--text-muted)' }}
           >
-            <span 
+            <span
               className="font-medium transition-colors"
               style={{ color: 'var(--text-primary)' }}
             >
               Canvas: {CANVAS_WIDTH} × {CANVAS_HEIGHT}px
             </span>
-            <span 
+            <span
               className="transition-colors"
               style={{ color: 'var(--border-color)' }}
             >
               •
             </span>
             <span>
-              Elements: <span 
+              Elements:{' '}
+              <span
                 className="font-medium transition-colors"
                 style={{ color: 'var(--text-primary)' }}
               >
@@ -1653,15 +1443,13 @@ export default function LabelEditorModal({
             </span>
             {selectedElement && (
               <>
-                <span 
+                <span
                   className="transition-colors"
                   style={{ color: 'var(--border-color)' }}
                 >
                   •
                 </span>
-                <span 
-                  className="text-[#4DB64F] font-medium transition-colors"
-                >
+                <span className="text-[#4DB64F] font-medium transition-colors">
                   Selected: {selectedElement.type}
                 </span>
               </>
@@ -1672,10 +1460,10 @@ export default function LabelEditorModal({
               onClick={undo}
               disabled={!canUndo()}
               className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-              style={{ 
-                backgroundColor: 'var(--card-bg)', 
+              style={{
+                backgroundColor: 'var(--card-bg)',
                 borderColor: 'var(--border-color)',
-                color: 'var(--text-primary)'
+                color: 'var(--text-primary)',
               }}
               onMouseEnter={(e) => {
                 if (!e.currentTarget.disabled) {
@@ -1695,10 +1483,10 @@ export default function LabelEditorModal({
               onClick={redo}
               disabled={!canRedo()}
               className="px-4 py-2 border rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm font-medium"
-              style={{ 
-                backgroundColor: 'var(--card-bg)', 
+              style={{
+                backgroundColor: 'var(--card-bg)',
                 borderColor: 'var(--border-color)',
-                color: 'var(--text-primary)'
+                color: 'var(--text-primary)',
               }}
               onMouseEnter={(e) => {
                 if (!e.currentTarget.disabled) {
@@ -1726,4 +1514,3 @@ export default function LabelEditorModal({
     </div>
   );
 }
-

@@ -194,9 +194,9 @@ function BottleModelWithCenter({ capColor, labelTexture, onCenterChange }: Bottl
         labelTexture,
         (texture) => {
           // Label UV mapping area dimensions (from canvas size)
-          const LABEL_UV_WIDTH = 2081;
+          const LABEL_UV_WIDTH = 2000;
           const LABEL_UV_HEIGHT = 544;
-          const LABEL_UV_ASPECT = LABEL_UV_WIDTH / LABEL_UV_HEIGHT; // ≈ 3.827
+          const LABEL_UV_ASPECT = LABEL_UV_WIDTH / LABEL_UV_HEIGHT; // ≈ 3.676
           
           // Get image dimensions
           const imageWidth = texture.image.width;

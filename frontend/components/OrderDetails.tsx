@@ -315,12 +315,12 @@ export default function OrderDetails({ order, onStatusUpdate, loading }: OrderDe
                       });
                       return null;
                     })()}
-                    <BottleMultiAngleView 
+                    {/* <BottleMultiAngleView 
                       labelImage={order.label_image}
                       capColor={capColor}
                       height="600px"
                       showInstructions={false}
-                    />
+                    /> */}
                   </>
                 ) : order.bottle_snapshot ? (
                   <img

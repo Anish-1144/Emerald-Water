@@ -146,7 +146,7 @@ export default function DesignPage() {
       return '';
     }
 
-    canvas.width = 2081; // Match label editor canvas size
+    canvas.width = 2010; // Match label editor canvas size
     canvas.height = 544;
 
     // Draw background

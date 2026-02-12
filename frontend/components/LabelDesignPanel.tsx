@@ -162,6 +162,51 @@ export default function LabelDesignPanel({
       };
 
       drawElements();
+
+      // Draw company description in preview
+      const drawCompanyDescription = () => {
+        // Company description constants (0.5 inch = 143px at 7 inches = 2000px)
+        const COMPANY_DESC_WIDTH = 143 * scale; // Scaled for preview
+        const COMPANY_DESC_TEXT = `Bottled with Superior Quality High pH Alkaline Water
+Bottled by/ Embouteillee par:
+Emerald Water & Ice Inc, Regina, Sk
+www.emeraldwater.ca 306-791-2291`;
+        const COMPANY_DESC_FONT_SIZE = 20 * scale;
+        const COMPANY_DESC_PADDING = 25 * scale;
+
+        // Save context
+        ctx.save();
+
+        // Translate to right edge, top, and rotate 90 degrees (full height)
+        ctx.translate(previewWidth, 0);
+        ctx.rotate(Math.PI / 2); // 90 degrees
+
+        // Draw black background rectangle - full height
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(0, 0, previewHeight, COMPANY_DESC_WIDTH);
+
+        // Draw white text
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = `${COMPANY_DESC_FONT_SIZE}px Arial`;
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+
+        // Draw text with line breaks
+        const lines = COMPANY_DESC_TEXT.split('\n');
+        const lineHeight = COMPANY_DESC_FONT_SIZE * 1.2;
+        lines.forEach((line, index) => {
+          ctx.fillText(
+            line,
+            COMPANY_DESC_PADDING,
+            COMPANY_DESC_PADDING + (index * lineHeight)
+          );
+        });
+
+        // Restore context
+        ctx.restore();
+      };
+
+      drawCompanyDescription();
     };
 
     // Initial render
@@ -195,7 +240,7 @@ export default function LabelDesignPanel({
         const img = new Image();
         img.onload = () => {
           // Auto-scale to fit canvas (max 80% of canvas size)
-          const maxWidth = 2081 * 0.8;
+          const maxWidth = 2000 * 0.8;
           const maxHeight = 544 * 0.8;
           let width = img.width;
           let height = img.height;
@@ -213,7 +258,7 @@ export default function LabelDesignPanel({
           
           addElement({
             type: 'image',
-            x: (2081 - width) / 2,
+            x: (2000 - width) / 2,
             y: (544 - height) / 2,
             width,
             height,
@@ -237,7 +282,7 @@ export default function LabelDesignPanel({
     }
     addElement({
       type: 'text',
-      x: 2081 / 2 - 100,
+      x: 2000 / 2 - 100,
       y: 544 / 2 - 12,
       width: 200,
       height: 24,
@@ -476,7 +521,7 @@ export default function LabelDesignPanel({
         className="p-4 text-xs transition-colors"
         style={{ color: 'var(--text-muted)' }}
       >
-        <p>Canvas Size: 2081 × 544px</p>
+        <p>Canvas Size: 2000 × 544px</p>
         <p className="mt-1">Click "Open Label Editor" to design your label</p>
       </div>
 
